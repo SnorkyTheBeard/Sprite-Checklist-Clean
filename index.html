@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en" class="app-booting">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#050505">
+  <meta name="description" content="A visually editable Fortnite Sprite checklist with collected and mastered progress.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Fortnite Sprite Tracker">
+  <title>Fortnite Sprite Tracker</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <script src="published-design.js" fetchpriority="high"></script>
+  <script>
+    (() => {
+      try {
+        const published = window.PUBLISHED_DESIGN && typeof window.PUBLISHED_DESIGN === 'object' ? window.PUBLISHED_DESIGN : {};
+        const storageScope = (decodeURIComponent(location.pathname.split('/').filter(Boolean)[0] || 'root'))
+          .toLowerCase().replace(/[^a-z0-9_-]+/g,'-') || 'root';
+        const scopedDesignKey = `galaxy_sprite_tracker_design_v2_${storageScope}`;
+        const scopedDesign = localStorage.getItem(scopedDesignKey);
+        const legacyDesign = storageScope === 'sprite-checklist'
+          ? localStorage.getItem('galaxy_sprite_tracker_design_v1')
+          : null;
+        const saved = JSON.parse(scopedDesign || legacyDesign || 'null');
+        const savedAt = Number(saved?._meta?.localUpdatedAt || 0);
+        const publishedAt = Number(published?._meta?.publishedAt || 0);
+        const hasPublishedDesign = Boolean(published && Object.keys(published).length);
+        const design = !saved
+          ? published
+          : !hasPublishedDesign
+            ? saved
+            : (saved?._meta && savedAt > publishedAt ? saved : published);
+        const theme = design?.theme;
+        if (!theme) return;
+
+        const root = document.documentElement;
+        const activeRarity = ['rare','epic','legendary','mythic'].includes(location.hash.slice(1).toLowerCase())
+          ? location.hash.slice(1).toLowerCase().replace(/^./,(letter) => letter.toUpperCase())
+          : 'Rare';
+        const version = Number(design?._meta?.publishedAt || 0);
+        const assetUrl = (source) => {
+          if (!source || !version || !/^(?:\.\/)?published-assets\//.test(source)) return source || '';
+          return `${source}${source.includes('?') ? '&' : '?'}v=${version}`;
+        };
+        const mode = (value) => value === 'contain'
+          ? { size:'contain', repeat:'no-repeat' }
+          : value === 'repeat'
+            ? { size:'auto', repeat:'repeat' }
+            : value === 'stretch'
+              ? { size:'100% 100%', repeat:'no-repeat' }
+              : { size:'cover', repeat:'no-repeat' };
+        const position = (value) => value === 'upper'
+          ? 'center 20%'
+          : value === 'top'
+            ? 'center top'
+            : value === 'bottom'
+              ? 'center bottom'
+              : 'center';
+        const setImage = (prefix,source,imageMode) => {
+          const image = assetUrl(source);
+          const sizing = mode(imageMode);
+          root.style.setProperty(`--theme-${prefix}-image`,image ? `url("${image}")` : 'none');
+          root.style.setProperty(`--theme-${prefix}-size`,sizing.size);
+          root.style.setProperty(`--theme-${prefix}-repeat`,sizing.repeat);
+          return image;
+        };
+        const withOpacity = (color,opacity) => {
+          const match = String(color || '').match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+          if (!match) return color;
+          const channels = match.slice(1).map((part) => parseInt(part,16));
+          return `rgba(${channels.join(',')},${Math.max(0,Math.min(100,Number(opacity ?? 100))) / 100})`;
+        };
+        const set = (property,value,unit = '') => {
+          if (value !== undefined && value !== null && value !== '') root.style.setProperty(property,`${value}${unit}`);
+        };
+        const fontOptions = {
+          system:'-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif',
+          rounded:'"Trebuchet MS","Arial Rounded MT Bold",Arial,sans-serif',
+          storybook:'Georgia,"Times New Roman",serif',
+          playful:'"Sprite Playful","Trebuchet MS",cursive',
+          bold:'Impact,"Arial Black",sans-serif',
+          mono:'"Courier New",monospace',
+          custom:'"UserCustomFont",sans-serif'
+        };
+
+        if (theme.customFontData) {
+          const customFontStyle = document.createElement('style');
+          customFontStyle.id = 'userCustomFontStyle';
+          customFontStyle.textContent = `@font-face{font-family:"UserCustomFont";src:url("${theme.customFontData}");font-display:swap;}`;
+          document.head.appendChild(customFontStyle);
+          if (!/^(?:data:|blob:)/i.test(theme.customFontData)) {
+            const customFontPreload = document.createElement('link');
+            customFontPreload.rel = 'preload';
+            customFontPreload.as = 'font';
+            customFontPreload.href = theme.customFontData;
+            customFontPreload.crossOrigin = 'anonymous';
+            document.head.appendChild(customFontPreload);
+          }
+        }
+
+        set('--font-body',fontOptions[theme.bodyFont] || fontOptions.system);
+        set('--font-heading',fontOptions[theme.headingFont] || fontOptions.system);
+        set('--font-button',fontOptions[theme.buttonFont] || fontOptions.system);
+        const summaryFont = theme.summaryFont === 'heading'
+          ? 'var(--font-heading)'
+          : theme.summaryFont === 'button'
+            ? 'var(--font-button)'
+            : theme.summaryFont === 'body'
+              ? 'var(--font-body)'
+              : (fontOptions[theme.summaryFont] || 'var(--font-body)');
+        set('--font-summary',summaryFont);
+        set('--theme-body-bg',theme.bodyBgColor);
+        set('--theme-text',theme.textColor);
+        set('--theme-muted',theme.mutedColor);
+        set('--theme-base-size',theme.baseSize,'px');
+        set('--theme-title-size',theme.titleSize,'px');
+        set('--theme-page-title-size',theme.pageTitleSize,'px');
+        set('--theme-header-text',theme.headerTextColor);
+        set('--theme-header-border',theme.headerBorderColor);
+        set('--theme-header-radius',theme.headerRadius,'px');
+        set('--theme-header-height',theme.headerHeight,'px');
+        set('--theme-header-surface',withOpacity(theme.headerBgColor,theme.headerOpacity));
+
+        const pageHeader = theme.pageHeaderBackgrounds?.[activeRarity];
+        const usePageHeader = Boolean(pageHeader?.enabled && pageHeader.image);
+        const headerImage = usePageHeader ? pageHeader.image : theme.headerBgImage;
+        const headerMode = usePageHeader ? pageHeader.mode : theme.headerBgMode;
+        const headerPosition = usePageHeader ? pageHeader.position : theme.headerBgPosition;
+        const page = theme.pageBackgrounds?.[activeRarity];
+        const bodyImage = setImage('body',theme.bodyBgImage,theme.bodyBgMode);
+        const topImage = setImage('header',headerImage,headerMode);
+        set('--theme-header-position',position(headerPosition));
+        const pageImage = page?.enabled ? setImage('page',page.image,page.mode) : '';
+        if (page?.enabled) set('--theme-page-bg',page.color);
+
+        const initialImages = new Map();
+        if (topImage) initialImages.set(topImage,'high');
+        if (bodyImage && !initialImages.has(bodyImage)) initialImages.set(bodyImage,'auto');
+        [...initialImages].forEach(([href,priority]) => {
+          if (/^(?:data:|blob:)/i.test(href)) return;
+          const link = document.createElement('link');
+          link.rel = 'preload';
+          link.as = 'image';
+          link.href = href;
+          link.setAttribute('fetchpriority',priority);
+          document.head.appendChild(link);
+        });
+      } catch {}
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css?v=49">
+  <script src="data.js?v=49" defer></script>
+  <script src="app.js?v=49" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#collections">Skip to checklist</a>
+
+  <div class="app-shell">
+    <header class="hero summary-text-only summary-bars-hidden" id="hero">
+      <button class="edit-chip editor-only" id="editHeaderBtn" type="button">Edit site header</button>
+      <p class="kicker" id="heroKicker" hidden></p>
+      <h1 id="heroTitle">Fortnite Sprite Tracker</h1>
+      <p class="sub" id="heroSubtitle" hidden></p>
+
+      <div class="summary" role="group" aria-label="Overall progress">
+        <div id="collectedSummaryBox" class="summary-box" data-summary-box="collected">
+          <button class="summary-move-handle editor-only" type="button" aria-label="Move In Collection text">Move</button>
+          <strong id="collectedTotal">0 / 0</strong>
+          <span id="collectedLabel">In Collection</span>
+          <span class="progress-track" aria-hidden="true"><i id="collectedBar"></i></span>
+        </div>
+        <div id="masteredSummaryBox" class="summary-box" data-summary-box="mastered">
+          <button class="summary-move-handle editor-only" type="button" aria-label="Move Mastered text">Move</button>
+          <strong id="masteredTotal">0 / 0</strong>
+          <span id="masteredLabel">Mastered</span>
+          <span class="progress-track" aria-hidden="true"><i id="masteredBar"></i></span>
+        </div>
+      </div>
+    </header>
+
+    <section class="editor-dock" aria-label="Visual editor">
+      <button id="editModeBtn" class="edit-mode-btn" type="button" aria-pressed="false" hidden>Edit Mode</button>
+      <div class="editor-menu editor-only">
+        <button id="editorMenuBtn" class="editor-menu-btn" type="button" aria-expanded="false" aria-controls="editorTools">Editing tools <span aria-hidden="true">▾</span></button>
+        <div id="editorTools" class="editor-tools" hidden>
+          <p class="editor-menu-guide"><strong>Choose by scope.</strong> Use the blue Edit button on the exact header, rarity page, group, or sprite you want to change. Use Whole-site defaults only when the same look should apply everywhere.</p>
+          <section class="editor-tool-group" aria-labelledby="editorDesignToolsLabel">
+            <h3 id="editorDesignToolsLabel">Whole site</h3>
+            <button id="designStudioBtn" type="button">Whole-site defaults (all pages)</button>
+          </section>
+          <section class="editor-tool-group" aria-labelledby="editorContentToolsLabel">
+            <h3 id="editorContentToolsLabel">Add content</h3>
+            <button id="addFamilyBtn" type="button">Add sprite group</button>
+          </section>
+          <section class="editor-tool-group" aria-labelledby="editorPublishToolsLabel">
+            <h3 id="editorPublishToolsLabel">Save &amp; publish</h3>
+            <button id="saveChangesBtn" class="save-edit-btn" type="button">Save all changes</button>
+            <button id="cloudSyncBtn" type="button">Automatic sync: Off</button>
+            <button id="publishDesignBtn" class="publish-edit-btn" type="button">Download manual public-design file</button>
+            <button id="installCodeUpdateBtn" type="button">Install code update</button>
+          </section>
+          <section class="editor-tool-group editor-tool-group-safety" aria-labelledby="editorSafetyToolsLabel">
+            <h3 id="editorSafetyToolsLabel">Backup &amp; safety</h3>
+            <button id="exportBtn" type="button">Download complete backup</button>
+            <button id="importBtn" type="button">Restore from backup</button>
+            <button id="lockOwnerBtn" type="button">Lock editing</button>
+            <button id="resetDesignBtn" class="editor-reset-design-btn" type="button">Reset entire design</button>
+          </section>
+          <input id="importFile" class="visually-hidden" type="file" accept="application/json,.json">
+        </div>
+        <p id="cloudSyncStatus" class="editor-sync-status" role="status">Design changes are saved only in this browser.</p>
+      </div>
+    </section>
+
+    <section class="sprite-search" aria-label="Find a sprite">
+      <form id="spriteSearchForm" class="sprite-search-form" role="search">
+        <label class="visually-hidden" for="spriteSearchInput">Search sprites</label>
+        <input id="spriteSearchInput" type="search" inputmode="search" autocomplete="off" placeholder="Search sprites, groups, or variants" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="spriteSearchResults" aria-expanded="false">
+        <button type="submit">Find</button>
+        <button id="clearSpriteSearchBtn" class="search-clear" type="button" hidden>Clear</button>
+      </form>
+      <div id="spriteSearchResults" class="sprite-search-results" role="listbox" aria-label="Matching sprites" hidden></div>
+      <p id="spriteSearchStatus" class="visually-hidden" aria-live="polite"></p>
+    </section>
+
+    <nav class="rarity-tabs" id="rarityTabs" aria-label="Sprite rarity pages" role="tablist"></nav>
+
+    <main id="checklistPage" role="tabpanel" aria-labelledby="activePageTitle">
+      <header class="page-head">
+        <div>
+          <p class="page-eyebrow" id="pageEyebrow" hidden></p>
+          <h2 id="activePageTitle">Rare Sprites</h2>
+          <p id="pageDescription">Track every available variant in this rarity.</p>
+        </div>
+        <div class="page-actions">
+          <button class="edit-chip editor-only" id="editPageBtn" type="button">Edit page</button>
+          <strong class="page-count" id="pageCount">0 / 0</strong>
+        </div>
+      </header>
+
+      <div id="collections"></div>
+      <p class="page-swipe-hint" aria-hidden="true">Swipe left or right outside a sprite row to change rarity.</p>
+    </main>
+
+    <footer>
+      <p id="footerNote">All Progress Saves Locally</p>
+      <button id="resetBtn" class="reset-btn" type="button">Reset all progress</button>
+      <button id="ownerAccessBtn" class="owner-access-btn" type="button">Owner access</button>
+    </footer>
+  </div>
+
+  <img id="leftCustomArt" class="custom-art art-left" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" hidden>
+  <img id="rightCustomArt" class="custom-art art-right" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" hidden>
+
+  <dialog id="designStudioDialog" class="editor-dialog design-studio-dialog">
+    <form id="designStudioForm">
+      <div class="dialog-head"><h2>Whole-site defaults</h2><button class="icon-close" type="button" data-close-dialog aria-label="Close">×</button></div>
+      <div class="dialog-body design-studio-body">
+        <div class="editor-scope-banner editor-scope-global">
+          <strong>Scope: every rarity page</strong>
+          <span><b>Changes:</b> shared fonts, site background, group and sprite defaults, tabs, buttons, and side artwork.</span>
+          <span><b>Does not change:</b> header content, one rarity’s text or artwork, one group, or one sprite.</span>
+        </div>
+        <p class="live-preview-label">Live preview</p>
+        <div class="studio-live-preview" role="img" aria-label="Whole-site defaults preview">
+          <div class="studio-preview-copy"><small>Rarity page</small><h3>Shared typography</h3><p>Fonts, sizes, and colors update here while you edit.</p></div>
+          <div class="studio-preview-tabs"><span>Rare</span><span class="is-selected">Epic</span></div>
+          <div class="studio-preview-group">
+            <strong>Sprite Group</strong>
+            <article class="studio-preview-card">
+              <div class="studio-preview-well">Your art</div>
+              <b>Sprite Name</b>
+              <span>□ In Collection</span>
+            </article>
+          </div>
+        </div>
+        <details open>
+          <summary>Typography — shared everywhere</summary>
+          <div class="studio-section">
+            <p class="field-help">These fonts and sizes are shared across all rarity pages. Header text content is edited with the blue Edit site header button.</p>
+            <div class="field-grid">
+              <label>Body font<select id="themeBodyFont" data-font-select></select></label>
+              <label>Heading font<select id="themeHeadingFont" data-font-select></select></label>
+              <label>Button font<select id="themeButtonFont" data-font-select></select></label>
+              <label>Base font size<input id="themeBaseSize" type="range" min="12" max="22" step="1"><span class="range-output" id="themeBaseSizeOutput"></span></label>
+              <label>Main header-title size<input id="themeTitleSize" type="range" min="28" max="72" step="1"><span class="range-output" id="themeTitleSizeOutput"></span></label>
+              <label>Page-heading size<input id="themePageTitleSize" type="range" min="20" max="50" step="1"><span class="range-output" id="themePageTitleSizeOutput"></span></label>
+              <label>Group-heading size<input id="themeGroupTitleSize" type="range" min="14" max="34" step="1"><span class="range-output" id="themeGroupTitleSizeOutput"></span></label>
+              <label>Sprite-label size<input id="themeSpriteLabelSize" type="range" min="11" max="26" step="1"><span class="range-output" id="themeSpriteLabelSizeOutput"></span></label>
+              <label>Checklist-button size<input id="themeChecklistButtonSize" type="range" min="11" max="22" step="1"><span class="range-output" id="themeChecklistButtonSizeOutput"></span></label>
+              <label>Main text color<input id="themeTextColor" type="color"></label>
+              <label>Secondary text color<input id="themeMutedColor" type="color"></label>
+            </div>
+            <label>Upload your own font<input id="themeCustomFontFile" type="file" accept=".woff,.woff2,.ttf,.otf,font/*"></label>
+            <button id="removeCustomFontBtn" type="button">Remove custom font</button>
+          </div>
+        </details>
+
+        <details>
+          <summary>Site background — behind every rarity</summary>
+          <div class="studio-section">
+            <p class="field-help">This is the background behind the entire app. A rarity can use its own checklist background through Edit rarity page.</p>
+            <div class="field-grid">
+              <label>Background color<input id="themeBodyBgColor" type="color"></label>
+              <label>Background image fit<select id="themeBodyBgMode"><option value="cover">Cover</option><option value="contain">Contain</option><option value="repeat">Repeat pattern</option><option value="stretch">Stretch</option></select></label>
+            </div>
+            <label>Background image<input id="themeBodyBgFile" type="file" accept="image/*"></label>
+            <button type="button" data-remove-theme-image="bodyBgImage">Remove background image</button>
+            <label class="check-field"><input id="themeUseBuiltInBodyArt" type="checkbox"> Use built-in galaxy gradient when no image is uploaded</label>
+            <label class="check-field"><input id="themeShowStars" type="checkbox"> Show built-in stars over the background</label>
+          </div>
+        </details>
+
+        <details>
+          <summary>Group layout defaults — all groups</summary>
+          <div class="studio-section">
+            <p class="field-help">Open layout removes the large outer box while keeping every group title, progress count, and sprite card.</p>
+            <div class="field-grid">
+              <label>Container style<select id="themeCollectionStyle"><option value="open">Open — no outer box</option><option value="boxed">Boxed</option></select></label>
+              <label>Boxed-layout text color<input id="themeCollectionTextColor" type="color"></label>
+              <label>Box color<input id="themeCollectionBgColor" type="color"></label>
+              <label>Border color<input id="themeCollectionBorderColor" type="color"></label>
+              <label>Corner roundness<input id="themeCollectionRadius" type="range" min="0" max="50" step="1"><span class="range-output" id="themeCollectionRadiusOutput"></span></label>
+              <label>Image fit<select id="themeCollectionBgMode"><option value="cover">Cover</option><option value="contain">Contain</option><option value="repeat">Repeat pattern</option><option value="stretch">Stretch</option></select></label>
+            </div>
+            <label>Collection box image<input id="themeCollectionBgFile" type="file" accept="image/*"></label>
+            <button type="button" data-remove-theme-image="collectionBgImage">Remove collection image</button>
+            <label class="check-field"><input id="themeUseBuiltInCollectionArt" type="checkbox"> Use built-in paper shading when no image is uploaded</label>
+          </div>
+        </details>
+
+        <details>
+          <summary>Sprite card defaults — all sprites</summary>
+          <div class="studio-section">
+            <p class="field-help">This is the default look for every sprite card. Edit sprite overrides it for one card only.</p>
+            <div class="field-grid">
+              <label>Card color<input id="themeCardBgColor" type="color"></label>
+              <label>Card text color<input id="themeCardTextColor" type="color"></label>
+              <label>Card border color<input id="themeCardBorderColor" type="color"></label>
+              <label>Card roundness<input id="themeCardRadius" type="range" min="0" max="45" step="1"><span class="range-output" id="themeCardRadiusOutput"></span></label>
+              <label>Card image fit<select id="themeCardBgMode"><option value="cover">Cover</option><option value="contain">Contain</option><option value="repeat">Repeat pattern</option><option value="stretch">Stretch</option></select></label>
+            </div>
+            <label>Card background image<input id="themeCardBgFile" type="file" accept="image/*"></label>
+            <button type="button" data-remove-theme-image="cardBgImage">Remove card image</button>
+          </div>
+        </details>
+
+        <details>
+          <summary>Sprite image-area defaults — all sprites</summary>
+          <div class="studio-section">
+            <p class="field-help">This changes the square image area inside every sprite card.</p>
+            <div class="field-grid">
+              <label>Image-well color<input id="themeWellBgColor" type="color"></label>
+              <label>Image-well border<input id="themeWellBorderColor" type="color"></label>
+              <label>Image fit<select id="themeWellBgMode"><option value="cover">Cover</option><option value="contain">Contain</option><option value="repeat">Repeat pattern</option><option value="stretch">Stretch</option></select></label>
+            </div>
+            <label>Image-well artwork<input id="themeWellBgFile" type="file" accept="image/*"></label>
+            <button type="button" data-remove-theme-image="wellBgImage">Remove image-well artwork</button>
+            <label class="check-field"><input id="themeUseBuiltInWellArt" type="checkbox"> Use built-in image-well gradient when no artwork is uploaded</label>
+          </div>
+        </details>
+
+        <details>
+          <summary>Rarity tabs &amp; checklist buttons — all pages</summary>
+          <div class="studio-section">
+            <p class="field-help">Progress text belongs to Edit header. These controls change navigation tabs and checklist buttons across the entire site.</p>
+            <div class="field-grid">
+              <label>Tab color<input id="themeTabBgColor" type="color"></label>
+              <label>Selected tab color<input id="themeTabActiveColor" type="color"></label>
+              <label>Button color<input id="themeButtonBgColor" type="color"></label>
+              <label>Button text<input id="themeButtonTextColor" type="color"></label>
+              <label>Check/accent color<input id="themeAccentColor" type="color"></label>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>Side artwork — all pages</summary>
+          <div class="studio-section">
+            <p class="field-help">Upload transparent PNG artwork to create custom borders down either side of the app.</p>
+            <label>Left-side artwork<input id="themeLeftArtFile" type="file" accept="image/*"></label>
+            <button type="button" data-remove-theme-image="leftArt">Remove left artwork</button>
+            <label>Right-side artwork<input id="themeRightArtFile" type="file" accept="image/*"></label>
+            <button type="button" data-remove-theme-image="rightArt">Remove right artwork</button>
+            <label>Artwork width<input id="themeArtWidth" type="range" min="40" max="260" step="5"><span class="range-output" id="themeArtWidthOutput"></span></label>
+          </div>
+        </details>
+
+        <div class="dialog-actions sticky-actions"><button type="button" data-close-dialog>Cancel preview</button><button class="primary-btn" type="submit">Save whole-site defaults</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="headerEditorDialog" class="editor-dialog">
+    <form id="headerEditorForm">
+      <div class="dialog-head"><h2>Edit header</h2><button class="icon-close" type="button" data-close-dialog aria-label="Close">×</button></div>
+      <div class="dialog-body">
+        <div class="editor-scope-banner">
+          <strong>Scope: header on every rarity page</strong>
+          <span><b>Changes:</b> header text, progress counters, and the default header artwork.</span>
+          <span><b>Does not change:</b> a rarity’s own header-image override or its checklist content.</span>
+        </div>
+        <p class="live-preview-label">Live preview</p>
+        <div id="editHeaderImagePreview" class="header-image-preview header-live-preview" role="img" aria-label="Live header preview">
+          <div class="header-live-content">
+            <small id="editHeaderPreviewKicker"></small>
+            <strong id="editHeaderPreviewTitle"></strong>
+            <p id="editHeaderPreviewSubtitle"></p>
+            <div id="editHeaderPreviewSummary" class="header-live-summary">
+              <span><b>0 / 0</b><em id="editHeaderPreviewCollected"></em><i></i></span>
+              <span><b>0 / 0</b><em id="editHeaderPreviewMastered"></em><i></i></span>
+            </div>
+          </div>
+        </div>
+        <label>Kicker text<input id="editKicker" type="text"></label>
+        <label>Main title<input id="editTitle" type="text"></label>
+        <label>Instructions<textarea id="editSubtitle" rows="3"></textarea></label>
+        <div class="field-grid">
+          <label>Collected label<input id="editCollectedLabel" type="text"></label>
+          <label>Mastered label<input id="editMasteredLabel" type="text"></label>
+        </div>
+        <label>Crown instruction<input id="editMasterPrompt" type="text" placeholder="Tap crown to master"></label>
+        <label>Footer note<input id="editFooterNote" type="text"></label>
+        <label class="check-field"><input id="editShowSummary" type="checkbox"> Show progress summary</label>
+        <p class="field-help">Leave any text box empty to remove that text from the page.</p>
+
+        <details class="editor-subsection" open>
+          <summary>Progress text and style</summary>
+          <div class="editor-subsection-body">
+            <p class="field-help">Text only removes the background and border so the two counters sit directly on the header artwork.</p>
+            <div class="field-grid">
+              <label>Style<select id="editSummaryStyle"><option value="text">Text only</option><option value="boxed">Boxed</option></select></label>
+              <label>Font<select id="editSummaryFont" data-summary-font-select></select></label>
+              <label>Text effect<select id="editSummaryTextEffect"><option value="shadow">Soft shadow</option><option value="glow">Glow</option><option value="none">None</option></select></label>
+              <label>Effect color<input id="editSummaryEffectColor" type="color"></label>
+              <label>Effect strength<input id="editSummaryEffectStrength" type="range" min="0" max="20" step="1"><span class="range-output" id="editSummaryEffectStrengthOutput"></span></label>
+              <label>Number size<input id="editSummaryNumberSize" type="range" min="14" max="42" step="1"><span class="range-output" id="editSummaryNumberSizeOutput"></span></label>
+              <label>Label size<input id="editSummaryLabelSize" type="range" min="9" max="26" step="1"><span class="range-output" id="editSummaryLabelSizeOutput"></span></label>
+              <label>Number color<input id="editSummaryNumberColor" type="color"></label>
+              <label>Label color<input id="editSummaryLabelColor" type="color"></label>
+              <label>Box color<input id="editSummaryBgColor" type="color"></label>
+              <label>Box border<input id="editSummaryBorderColor" type="color"></label>
+              <label>Box roundness<input id="editSummaryRadius" type="range" min="0" max="30" step="1"><span class="range-output" id="editSummaryRadiusOutput"></span></label>
+              <label>Box opacity<input id="editSummaryOpacity" type="range" min="0" max="100" step="1"><span class="range-output" id="editSummaryOpacityOutput"></span></label>
+            </div>
+            <label class="check-field"><input id="editSummaryShowBars" type="checkbox"> Show progress lines beneath the text</label>
+          </div>
+        </details>
+
+        <details class="editor-subsection">
+          <summary>Progress text positions</summary>
+          <div class="editor-subsection-body">
+            <label>Placement<select id="editSummaryPositionMode"><option value="flow">Default centered position</option><option value="free">Custom positions</option></select></label>
+            <p class="field-help">In Edit Mode, drag the Move handle on either counter to place it independently. On phones, only the handle moves it, so swiping elsewhere still scrolls the page. Choose Default centered position here to reset both counters.</p>
+          </div>
+        </details>
+
+        <details class="editor-subsection" open>
+          <summary>Header artwork — edge to edge</summary>
+          <div class="editor-subsection-body">
+            <label>Choose your header image<input id="editHeaderBgFile" type="file" accept="image/*"></label>
+            <button id="removeEditHeaderBgBtn" class="secondary-wide" type="button">Remove header image</button>
+            <div class="field-grid">
+              <label>Image fit<select id="editHeaderBgMode"><option value="cover">Cover</option><option value="contain">Contain</option><option value="repeat">Repeat pattern</option><option value="stretch">Stretch</option></select></label>
+              <label>Image position<select id="editHeaderBgPosition"><option value="center">Center</option><option value="upper">Upper center</option><option value="top">Top</option><option value="bottom">Bottom</option></select></label>
+              <label>Background color<input id="editHeaderBgColor" type="color"></label>
+              <label>Text color<input id="editHeaderTextColor" type="color"></label>
+              <label>Background opacity<input id="editHeaderOpacity" type="range" min="0" max="100" step="1"><span class="range-output" id="editHeaderOpacityOutput"></span></label>
+              <label>Minimum height<input id="editHeaderHeight" type="range" min="0" max="420" step="10"><span class="range-output" id="editHeaderHeightOutput"></span></label>
+            </div>
+            <p class="field-help">The header has no outline or rounded outer box; artwork fills the entire top area. It keeps its original detail when it already fits, or is resized at high quality up to 2000 × 1000. A height of 0 sizes the area automatically.</p>
+          </div>
+        </details>
+        <div class="dialog-actions"><button type="button" data-close-dialog>Cancel</button><button class="primary-btn" type="submit">Save header</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="pageEditorDialog" class="editor-dialog">
+    <form id="pageEditorForm">
+      <div class="dialog-head"><h2 id="editPageDialogTitle">Edit rarity page</h2><button class="icon-close" type="button" data-close-dialog aria-label="Close">×</button></div>
+      <div class="dialog-body">
+        <div class="editor-scope-banner">
+          <strong id="editPageScopeTitle">Scope: current rarity only</strong>
+          <span id="editPageScopeDetails"><b>Changes:</b> this rarity’s title, description, checklist background, and optional header image.</span>
+          <span><b>Does not change:</b> whole-site fonts, sprite-card defaults, header text, or other rarities.</span>
+        </div>
+        <p class="live-preview-label">Live preview</p>
+        <div id="editPageLivePreview" class="page-live-preview">
+          <div id="editPageHeaderPreview" class="header-image-preview page-header-live-preview" role="img" aria-label="Rarity header image preview"><span>No rarity header image</span></div>
+          <div id="editPageBodyPreview" class="page-body-live-preview">
+            <small id="editPagePreviewEyebrow"></small>
+            <strong id="editPagePreviewTitle"></strong>
+            <span id="editPagePreviewDescription"></span>
+          </div>
+        </div>
+        <details class="editor-subsection" open>
+          <summary id="editPageTextSectionTitle">Page text — this rarity only</summary>
+          <div class="editor-subsection-body">
+            <label>Small heading<input id="editPageEyebrow" type="text"></label>
+            <label>Page title<input id="editPageTitle" type="text"></label>
+            <label>Page description<textarea id="editPageDescription" rows="3"></textarea></label>
+          </div>
+        </details>
+        <details class="editor-subsection" open>
+          <summary id="editPageBackgroundSectionTitle">Checklist background — this rarity only</summary>
+          <div class="editor-subsection-body">
+            <label class="check-field"><input id="editPageBgEnabled" type="checkbox"> Use a different checklist background on this rarity</label>
+            <div id="editPageBackgroundOptions" class="dependent-controls">
+              <div class="field-grid">
+                <label>Checklist background color<input id="editPageBgColor" type="color"></label>
+                <label>Background image fit<select id="editPageBgMode"><option value="cover">Cover</option><option value="contain">Contain</option><option value="repeat">Repeat pattern</option><option value="stretch">Stretch</option></select></label>
+              </div>
+              <label>Checklist background image<input id="editPageBgFile" type="file" accept="image/*"></label>
+              <button id="removeEditPageBgBtn" class="secondary-wide" type="button">Remove this rarity’s background image</button>
+            </div>
+            <p class="field-help">When this option is off, this rarity uses the site background from Whole-site defaults.</p>
+          </div>
+        </details>
+        <details class="editor-subsection" open>
+          <summary id="editPageHeaderSectionTitle">Header image — this rarity only</summary>
+          <div class="editor-subsection-body">
+            <label class="check-field"><input id="editPageHeaderEnabled" type="checkbox"> Use a separate header image on this rarity page</label>
+            <div id="editPageHeaderOptions" class="dependent-controls">
+              <div class="field-grid">
+                <label>Header image fit<select id="editPageHeaderMode"><option value="cover">Cover</option><option value="contain">Contain</option><option value="repeat">Repeat pattern</option><option value="stretch">Stretch</option></select></label>
+                <label>Image position<select id="editPageHeaderPosition"><option value="center">Center</option><option value="upper">Upper center</option><option value="top">Top</option><option value="bottom">Bottom</option></select></label>
+              </div>
+              <label>Rarity header image<input id="editPageHeaderFile" type="file" accept="image/*"></label>
+              <button id="removeEditPageHeaderBtn" class="secondary-wide" type="button">Use the main header image instead</button>
+            </div>
+            <p class="field-help">Upload a different header for Rare, Epic, Legendary, or Mythic. If this option is off, that rarity uses the main header image from Edit header.</p>
+          </div>
+        </details>
+        <div class="dialog-actions"><button type="button" data-close-dialog>Cancel</button><button id="savePageEditorBtn" class="primary-btn" type="submit">Save rarity page</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="familyEditorDialog" class="editor-dialog">
+    <form id="familyEditorForm">
+      <div class="dialog-head"><h2 id="editFamilyDialogTitle">Edit sprite group</h2><button class="icon-close" type="button" data-close-dialog aria-label="Close">×</button></div>
+      <div class="dialog-body">
+        <input id="editFamilyId" type="hidden">
+        <div class="editor-scope-banner">
+          <strong id="editFamilyScopeTitle">Scope: one sprite group only</strong>
+          <span id="editFamilyScopeText"><b>Changes:</b> this group’s title, rarity, visibility, and optional background.</span>
+          <span><b>Does not change:</b> other groups or the whole-site group defaults.</span>
+        </div>
+        <p class="live-preview-label">Live preview</p>
+        <div id="editFamilyLivePreview" class="family-live-preview"><strong id="editFamilyPreviewTitle"></strong><span>0 / 0 collected</span></div>
+        <label>Group title<input id="editFamilyName" type="text"></label>
+        <label>Classification<select id="editFamilyRarity"><option>Rare</option><option>Epic</option><option>Legendary</option><option>Mythic</option></select></label>
+        <p id="editFamilyOpenLayoutNote" class="editor-inline-note" hidden>Outer group boxes are currently turned off for the whole site, so background controls are hidden. Use Whole-site defaults → Group layout defaults → Boxed to turn them back on.</p>
+        <div id="editFamilyBackgroundControls">
+          <label class="check-field"><input id="editFamilyCustomBg" type="checkbox"> Use a different background on this group</label>
+          <div class="field-grid">
+            <label>Group box color<input id="editFamilyBgColor" type="color"></label>
+            <label>Background image fit<select id="editFamilyBgMode"><option value="cover">Cover</option><option value="contain">Contain</option><option value="repeat">Repeat pattern</option><option value="stretch">Stretch</option></select></label>
+          </div>
+          <label>Group box background image<input id="editFamilyBgFile" type="file" accept="image/*"></label>
+          <button id="removeFamilyBgBtn" class="secondary-wide" type="button">Remove this group’s background image</button>
+          <button id="restoreFamilyBgBtn" class="secondary-wide" type="button">Use the whole-site group default</button>
+        </div>
+        <label class="check-field"><input id="editFamilyVisible" type="checkbox"> Show this group in the checklist</label>
+        <p class="field-help">Hidden groups remain available while Edit Mode is on so you can restore them.</p>
+        <button id="deleteFamilyBtn" class="danger-btn wide-action" type="button">Delete this entire group</button>
+        <div class="dialog-actions"><button type="button" data-close-dialog>Cancel</button><button id="saveFamilyEditorBtn" class="primary-btn" type="submit">Save group</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="addFamilyDialog" class="editor-dialog">
+    <form id="addFamilyForm">
+      <div class="dialog-head"><h2>Add sprite group</h2><button class="icon-close" type="button" data-close-dialog aria-label="Close">×</button></div>
+      <div class="dialog-body">
+        <label>Group title<input id="newFamilyName" type="text" required placeholder="New sprite name"></label>
+        <label>Classification<select id="newFamilyRarity"><option>Rare</option><option>Epic</option><option>Legendary</option><option>Mythic</option></select></label>
+        <label>Starting boxes<input id="newFamilyVariants" type="text" value="Base, Gold, Gummy, Galaxy, Cube, Gem, Quack"></label>
+        <p class="field-help">Separate box names with commas. Every box starts empty and can receive your artwork in Edit Mode.</p>
+        <div class="dialog-actions"><button type="button" data-close-dialog>Cancel</button><button class="primary-btn" type="submit">Add group</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="variantEditorDialog" class="editor-dialog">
+    <form id="variantEditorForm">
+      <div class="dialog-head"><h2 id="editVariantDialogTitle">Edit sprite</h2><button class="icon-close" type="button" data-close-dialog aria-label="Close">×</button></div>
+      <div class="dialog-body">
+        <input id="editVariantFamilyId" type="hidden">
+        <input id="editVariantId" type="hidden">
+        <div class="editor-scope-banner">
+          <strong id="editVariantScopeTitle">Scope: one sprite card only</strong>
+          <span id="editVariantScopeText"><b>Changes:</b> this sprite’s label, artwork, visibility, and optional card background.</span>
+          <span><b>Does not change:</b> other sprites or the whole-site sprite-card defaults.</span>
+        </div>
+        <p class="live-preview-label">Live preview</p>
+        <div id="variantCardLivePreview" class="variant-card-live-preview">
+          <div class="editor-preview"><img id="variantImagePreview" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Current sprite preview"></div>
+          <strong id="variantNameLivePreview"></strong>
+          <span class="variant-button-live-preview">□ In Collection</span>
+        </div>
+        <label>Sprite label<input id="editVariantName" type="text"></label>
+        <label>Replace image<input id="editVariantImage" type="file" accept="image/*"></label>
+        <div class="inline-actions">
+          <button id="removeVariantImageBtn" type="button">Remove image</button>
+          <button id="restoreVariantBtn" type="button">Restore original</button>
+        </div>
+        <label class="check-field"><input id="editVariantCustomCard" type="checkbox"> Use a different background on this sprite card</label>
+        <div class="field-grid">
+          <label>Card background color<input id="editVariantCardColor" type="color"></label>
+          <label>Background image fit<select id="editVariantCardMode"><option value="cover">Cover</option><option value="contain">Contain</option><option value="repeat">Repeat pattern</option><option value="stretch">Stretch</option></select></label>
+        </div>
+        <label>Card background image<input id="editVariantCardFile" type="file" accept="image/*"></label>
+        <button id="removeVariantCardBgBtn" class="secondary-wide" type="button">Remove card background image</button>
+        <button id="restoreVariantCardBgBtn" class="secondary-wide" type="button">Use the whole-site sprite-card default</button>
+        <label class="check-field"><input id="editVariantVisible" type="checkbox"> Show this sprite in the checklist</label>
+        <p class="field-help">Large uploads are resized before saving. Changes stay on this device unless you export a backup.</p>
+        <button id="deleteVariantBtn" class="danger-btn wide-action" type="button">Delete this box</button>
+        <div class="dialog-actions"><button type="button" data-close-dialog>Cancel</button><button id="saveVariantEditorBtn" class="primary-btn" type="submit">Save sprite</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="addVariantDialog" class="editor-dialog">
+    <form id="addVariantForm">
+      <div class="dialog-head"><h2>Add box</h2><button class="icon-close" type="button" data-close-dialog aria-label="Close">×</button></div>
+      <div class="dialog-body">
+        <input id="newVariantFamilyId" type="hidden">
+        <label>Box label<input id="newVariantName" type="text" required placeholder="New variant"></label>
+        <p class="field-help">The new box starts empty. Add artwork by opening it or dropping an image onto it in Edit Mode.</p>
+        <div class="dialog-actions"><button type="button" data-close-dialog>Cancel</button><button class="primary-btn" type="submit">Add box</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="publishDesignDialog" class="editor-dialog">
+    <div class="dialog-head"><h2>Publish your design</h2><button class="icon-close" type="button" data-close-dialog aria-label="Close">×</button></div>
+    <div class="dialog-body">
+      <p class="publish-ready">Your complete public design is ready.</p>
+      <p id="publishDesignDetails" class="field-help"></p>
+      <a id="publishDownloadLink" class="publish-file-link" href="#" download="published-design.js">Download published-design.js</a>
+      <button id="sharePublishedDesignBtn" class="secondary-wide" type="button" hidden>Share or save to Files</button>
+      <button id="copyPublishedDesignBtn" class="secondary-wide" type="button">Copy file contents</button>
+      <p class="field-help">After saving the file, upload it to the root of your GitHub repository and replace the existing published-design.js. Do not upload the blank file from the app ZIP.</p>
+      <div class="dialog-actions"><button class="primary-btn" type="button" data-close-dialog>Done</button></div>
+    </div>
+  </dialog>
+
+  <dialog id="ownerAccessDialog" class="editor-dialog">
+    <form id="ownerAccessForm">
+      <div class="dialog-head"><h2>Owner access</h2><button class="icon-close" type="button" data-close-dialog aria-label="Close">×</button></div>
+      <div class="dialog-body">
+        <p class="field-help">Enter the private owner key to reveal the editing and publishing controls on this device.</p>
+        <label>Owner key<input id="ownerKeyInput" type="password" autocomplete="current-password" required></label>
+        <p id="ownerKeyError" class="form-error" role="alert" hidden>That owner key is incorrect.</p>
+        <div class="dialog-actions"><button type="button" data-close-dialog>Cancel</button><button class="primary-btn" type="submit">Unlock editing</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="cloudSyncDialog" class="editor-dialog">
+    <form id="cloudSyncForm">
+      <div class="dialog-head"><h2>Automatic browser sync</h2><button class="icon-close" type="button" data-close-dialog aria-label="Close">×</button></div>
+      <div class="dialog-body">
+        <p class="field-help sync-intro">Connect the owner editor to the GitHub repository once. Each saved design change will update the public design automatically; other open browsers check for updates in the background.</p>
+        <div class="field-grid">
+          <label>Repository owner<input id="syncRepoOwner" type="text" autocomplete="off" value="SnorkyTheBeard" required></label>
+          <label>Repository name<input id="syncRepoName" type="text" autocomplete="off" value="Sprite-Checklist" required></label>
+          <label>Branch<input id="syncRepoBranch" type="text" autocomplete="off" value="main" required></label>
+          <label>Design file<input id="syncRepoPath" type="text" autocomplete="off" value="published-design.js" required></label>
+        </div>
+        <label>Fine-grained GitHub token<input id="syncGithubToken" type="password" autocomplete="off" spellcheck="false" placeholder="Paste a token with Contents: read and write"></label>
+        <p id="syncStoredTokenNote" class="field-help" hidden>A token is already stored on this browser. Leave the field empty to keep it.</p>
+        <label class="check-field"><input id="syncEnabled" type="checkbox" checked> Automatically publish every saved design change</label>
+        <p class="field-help">Create a fine-grained token restricted to only this repository with Contents permission set to Read and write. The token stays in this owner browser and is never included in public designs or backups. <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">Create token on GitHub</a></p>
+        <p id="cloudSyncDialogStatus" class="sync-dialog-status" role="status"></p>
+        <button id="disconnectCloudSyncBtn" class="secondary-wide" type="button">Remove saved connection</button>
+        <div class="dialog-actions"><button type="button" data-close-dialog>Cancel</button><button id="connectCloudSyncBtn" class="primary-btn" type="submit">Connect and publish now</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="codeUpdateDialog" class="editor-dialog code-update-dialog">
+    <form id="codeUpdateForm">
+      <div class="dialog-head"><h2>Install code update</h2><button class="icon-close" type="button" data-close-dialog aria-label="Close">×</button></div>
+      <div class="dialog-body">
+        <div class="editor-scope-banner">
+          <strong>Updates the app code only</strong>
+          <span>Your published design, custom backgrounds, sprite artwork, and progress are protected and cannot be included.</span>
+        </div>
+        <p class="field-help code-update-target">GitHub destination: <strong id="codeUpdateTarget"></strong></p>
+        <label>Reviewed code-update ZIP<input id="codeUpdateFile" type="file" accept=".zip,application/zip,application/x-zip-compressed" required></label>
+        <p class="field-help">Choose a Sprite Checklist code-update ZIP prepared for this installer. The package is checked before GitHub is contacted. Only install a ZIP you received from a source you trust because app code can change how the tracker works.</p>
+        <div id="codeUpdatePreview" class="code-update-preview" hidden>
+          <p><strong id="codeUpdateSummary"></strong></p>
+          <ul id="codeUpdateFileList"></ul>
+        </div>
+        <p class="code-update-protection"><strong>Always blocked:</strong> published-design.js, every file in published-assets, repository settings, and unapproved file types.</p>
+        <label class="check-field"><input id="codeUpdateConfirm" type="checkbox"> I reviewed this file list and want to update the public app code.</label>
+        <p id="codeUpdateStatus" class="code-update-status" role="status" aria-live="polite">Choose a code-update ZIP to preview it.</p>
+        <div class="dialog-actions"><button type="button" data-close-dialog>Cancel</button><button id="applyCodeUpdateBtn" class="primary-btn" type="submit" disabled>Install update</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="resetDialog" class="reset-dialog">
+    <form method="dialog">
+      <h2>Reset your checklist?</h2>
+      <p>This clears every collected and mastered mark on this device.</p>
+      <div class="dialog-actions">
+        <button value="cancel" type="submit">Keep progress</button>
+        <button id="confirmResetBtn" class="danger-btn" value="reset" type="submit">Reset everything</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="statusToast" class="status-toast" role="status" aria-live="polite"></div>
+  <noscript>This checklist needs JavaScript to save and update progress.</noscript>
+
+</body>
+</html>
