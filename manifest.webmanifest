@@ -1,7 +1,7 @@
 {
   "name": "Fortnite Sprite Tracker",
   "short_name": "Sprite Tracker",
-  "description": "A visually editable Fortnite Sprite checklist with collected and mastered progress.",
+  "description": "A Fortnite Sprite checklist with collected and mastered progress.",
   "id": "./",
   "start_url": "./",
   "scope": "./",

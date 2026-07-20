@@ -1,85 +1,74 @@
-SPRITE CHECKLIST — CLEAN REVIEW BUILD
+SPRITE CHECKLIST — PUBLIC-ONLY BUILD
 
-What is included
-- Four rarity pages: Rare, Epic, Legendary, and Mythic.
-- The current published design and all artwork it references.
-- Owner-only visual editing, live previews, save confirmations, and automatic GitHub publishing.
-- Search, collection/mastery tracking, custom groups and boxes, image drop zones, and reorder controls.
-- Shared Base, Gold, Gummy, Galaxy, Cube, Gem, Quack, and Holofoil image-area backgrounds that apply automatically by variant name.
-- Separate Rare, Epic, Legendary, and Mythic cosmic checklist backgrounds that apply automatically and tile cleanly on long pages.
-- Native mobile scrolling, horizontal sprite rows, installable app icons, and offline caching.
+WHAT CHANGED
+- All owner access, Edit Mode, Design Studio, upload, drag-and-drop editing, publishing, cloud sync, and code-updater features were removed.
+- The public tracker remains: Rare, Epic, Legendary, and Mythic pages; search; collection and mastery tracking; native horizontal rows; mobile scrolling; installed artwork; and offline support.
+- The app no longer reads a private browser copy of the design. Every browser uses the files published on GitHub Pages.
+- On first use, the app removes only retired editor/design/owner/sync browser records. Checklist progress is preserved.
+- The smaller public app loads less JavaScript and no longer embeds a second full copy of the design in index.html.
 
-Clean first upload
-1. Extract the full-site ZIP on your computer.
-2. Open the new GitHub repository.
-3. Upload the contents of the extracted folder, not the ZIP itself and not an extra enclosing folder.
-4. Confirm that index.html is visible at the repository root.
-5. Confirm that assets, published-assets, fonts, and icons remain folders.
-6. Commit the upload.
-7. In Settings > Pages, choose Deploy from a branch, main, /(root), then Save.
-8. Keep the old repository until the new site has passed the review checklist below.
-
-Expected root files
+FILES TO REPLACE FOR THIS UPDATE
 - index.html
 - styles.css
 - app.js
-- data.js
-- published-design.js
 - service-worker.js
 - manifest.webmanifest
 - README.txt
 
-Expected folders
-- assets — bundled interface artwork, including the shared variant-background and rarity-page background packs
-- published-assets — public design artwork and the custom font
-- fonts — bundled fallback fonts
-- icons — home-screen and app icons
+FILE TO ADD
+- art-config.js
 
-Important protection rule for later updates
-- A full clean-site upload includes published-design.js and published-assets.
-- A normal code-only update must not replace published-design.js or published-assets.
-- Download a complete backup from Edit Mode before a large design change or repository move.
+DO NOT DELETE OR REPLACE UNLESS YOU INTEND TO CHANGE THEIR CONTENT
+- data.js
+- published-design.js
+- assets/
+- published-assets/
+- fonts/
+- icons/
 
-Owner editing and publishing
-1. Unlock Owner access, then turn on Edit Mode.
-2. Use the blue Edit button on the exact header, rarity page, group, or sprite you want to change.
-3. Use Whole-site defaults only for settings shared by every page.
-4. In Whole-site defaults, open Sprite image areas & variant backgrounds to replace a background once for every matching variant.
-5. In Edit Page, replace or restore the included background for only the Rare, Epic, Legendary, or Mythic page currently open.
-6. Save buttons close a successful editor and show a visible saved notification.
-7. Automatic Sync detects the GitHub Pages repository name from the site address. Review the owner, repository, and branch before connecting.
-8. The owner key only unlocks this browser's editor. GitHub repository permissions and the repository-limited token protect the public site.
+SAFE CLEANUP FROM THE PREVIOUS REPOSITORY SCREEN
+- Delete card-1200x1500/
+- Delete well-1200x1200/
+- Delete variant-background-map.json
+- If they ever appear, delete snorky_sprite_tracker_local_editor/, Sprite-Checklist-safe-publisher.html, sprite-code-update.json, and repository ZIP files.
 
-Browser storage behavior
-- Collection and mastery progress is private to each browser/device.
-- The public design comes from published-design.js and is shared by every browser after GitHub Pages deploys it.
-- Each GitHub Pages repository now has isolated design and sync storage, so an older project at the same github.io domain cannot overwrite the clean site.
-- Existing checklist progress is migrated when possible; use Download complete backup and Restore from backup when deliberately moving all local editor data.
+ADDING OR CHANGING ARTWORK
+1. Put the new image inside assets/custom/ or another clearly named folder in the repository.
+2. Open art-config.js.
+3. Enter the repository-relative image path in the matching setting.
+   Example: "assets/custom/rare-header.webp"
+4. Commit the file changes. GitHub Pages will publish them for every browser.
 
-Recommended source-art sizes
+ART-CONFIG RULES
+- null keeps the value from published-design.js.
+- "" intentionally removes an image or text value.
+- Image fits are cover, contain, tile, repeat, or stretch.
+- You can set the site background, main header, separate rarity headers and page backgrounds, all variant backgrounds, group backgrounds, individual sprite art, individual card backgrounds, side art, header text, labels, mastery prompt, footer text, and page titles.
+- Family and variant IDs are listed in data.js. Keep those IDs lowercase and unchanged.
+
+RECOMMENDED SOURCE-ART SIZES
 - Site or rarity background: 2400 × 1350 px for Cover, or 1200 × 1200 px for Seamless tile.
-- Header artwork: 2000 × 1000 px; keep important text/art near the center.
+- Header artwork: 2000 × 1000 px; keep important content near the center.
 - Group background: 2000 × 1400 px.
 - Sprite-card background: 1200 × 1500 px.
-- Sprite artwork or image-well background: 1200 × 1200 px, preferably transparent for sprite art.
+- Sprite artwork or image-area background: 1200 × 1200 px; transparent WebP or PNG is preferred for sprite art.
 - Side artwork: 1200 × 2400 px.
 - App icon: 512 × 512 px.
-- Custom font: WOFF2 preferred; WOFF, TTF, and OTF are supported up to 1.8 MB.
 
-Images smaller than these sizes still work, but the app does not invent missing detail by enlarging them. High-resolution originals look sharper on Retina phones and tablets.
+Use high-resolution originals. The app fits artwork to its area but cannot restore detail missing from a small or heavily compressed source.
 
-Review checklist
-1. Open Rare, Epic, Legendary, and Mythic.
-2. Confirm each rarity has its own background and every visible sprite image loads.
-3. Swipe vertically starting over sprite artwork; the page should move.
-4. Swipe a sprite row left and right; the row should coast natively and reveal a complete final card.
-5. Mark one sprite In Collection and Mastered, reload, and confirm the mark remains.
-6. Search for Grim and confirm the result opens Mythic and highlights the exact sprite.
-7. Unlock Owner access, change one harmless text field, save, and confirm the editor closes and the saved notification appears.
-8. Confirm Automatic Sync shows the new repository before connecting it.
-9. Test once in Safari and once in Chrome before deleting the old repository.
+BROWSER AND PROGRESS BEHAVIOR
+- Everyone receives the same artwork and layout from the GitHub Pages files.
+- Collection and mastery progress remains private to each browser/device.
+- Mastering a sprite also adds it to the collection.
+- Removing a sprite from the collection also removes mastery.
+- The service worker checks the network first for updated app files, then falls back to its offline copy.
 
-Notes
-- Mastering a sprite also marks it collected.
-- Removing collection status also removes mastery status.
-- Hidden groups and sprites remain available in Edit Mode unless they were explicitly deleted.
+REVIEW CHECKLIST
+1. Open Rare, Epic, Legendary, and Mythic and confirm each page background appears.
+2. Swipe vertically while starting over a sprite image; the page should scroll normally.
+3. Swipe each sprite row left and right; it should use native momentum and reveal the complete final card.
+4. Mark one sprite In Collection and Mastered, reload, and confirm it remains marked.
+5. Search for Grim and confirm the result opens Mythic and highlights the sprite.
+6. Confirm there is no Owner Access, Edit Mode, Design Studio, upload, publishing, or sync interface.
+7. Test once in Safari and once in Chrome.

@@ -1,11 +1,12 @@
-const CACHE = 'galaxy-sprite-checklist-v43';
+const CACHE = 'galaxy-sprite-checklist-v44';
 const CORE = [
   './',
   './index.html',
-  './styles.css?v=52',
+  './styles.css?v=54',
   './published-design.js',
-  './data.js?v=52',
-  './app.js?v=52',
+  './art-config.js?v=54',
+  './data.js?v=54',
+  './app.js?v=54',
   './manifest.webmanifest',
   './fonts/comic-neue-regular.woff2',
   './fonts/comic-neue-bold.woff2',
@@ -25,18 +26,15 @@ const CORE = [
   './assets/page-backgrounds/page-bg-legendary.webp',
   './assets/page-backgrounds/page-bg-mythic.webp'
 ];
-const FAST_NETWORK_BUDGET = 700;
-const FRESH_CODE_FILES = new Set(['styles.css','data.js','app.js','manifest.webmanifest']);
+const FRESH_CODE_FILES = new Set(['styles.css','art-config.js','data.js','app.js','manifest.webmanifest']);
 
-function preferFreshWithin(networkRequest, cachedResponse) {
-  const safeNetwork = networkRequest
-    .then((response) => response?.ok ? response : (cachedResponse || response))
-    .catch(() => cachedResponse || Response.error());
-  if (!cachedResponse) return safeNetwork;
-  return Promise.race([
-    safeNetwork,
-    new Promise((resolve) => setTimeout(() => resolve(cachedResponse),FAST_NETWORK_BUDGET))
-  ]);
+async function freshOrCached(networkRequest, cachedResponse) {
+  try {
+    const response = await networkRequest;
+    return response?.ok ? response : (cachedResponse || response);
+  } catch {
+    return cachedResponse || Response.error();
+  }
 }
 
 self.addEventListener('install', (event) => {
@@ -83,7 +81,7 @@ self.addEventListener('fetch', (event) => {
     );
     event.waitUntil(networkUpdate.catch(() => null));
     event.respondWith(
-      caches.match(event.request).then((cached) => preferFreshWithin(networkUpdate,cached))
+      caches.match(event.request).then((cached) => freshOrCached(networkUpdate,cached))
     );
     return;
   }
@@ -98,7 +96,7 @@ self.addEventListener('fetch', (event) => {
     });
     event.waitUntil(networkUpdate.catch(() => null));
     event.respondWith(
-      caches.match('./index.html').then((cached) => preferFreshWithin(networkUpdate,cached))
+      caches.match('./index.html').then((cached) => freshOrCached(networkUpdate,cached))
     );
     return;
   }
