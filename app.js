@@ -37,7 +37,7 @@
   const CODE_UPDATE_ALLOWED_ROOT = new Set([
     'index.html','styles.css','app.js','service-worker.js','data.js','manifest.webmanifest','README.txt','404.html','robots.txt','favicon.ico'
   ]);
-  const CODE_UPDATE_ALLOWED_FOLDERS = new Set(['fonts','icons']);
+  const CODE_UPDATE_ALLOWED_FOLDERS = new Set(['assets','fonts','icons']);
   const CODE_UPDATE_ALLOWED_EXTENSIONS = new Set([
     'html','css','js','json','txt','webmanifest','woff','woff2','ttf','otf','png','jpg','jpeg','webp','svg','ico'
   ]);
@@ -86,6 +86,19 @@
     ...FONT_OPTIONS
   };
 
+  const VARIANT_BACKGROUND_PRESETS = [
+    { key:'base', label:'Base', image:'assets/variant-backgrounds/variant-well-base.webp' },
+    { key:'gold', label:'Gold', image:'assets/variant-backgrounds/variant-well-gold.webp' },
+    { key:'gummy', label:'Gummy', image:'assets/variant-backgrounds/variant-well-gummy.webp' },
+    { key:'galaxy', label:'Galaxy', image:'assets/variant-backgrounds/variant-well-galaxy.webp' },
+    { key:'cube', label:'Cube', image:'assets/variant-backgrounds/variant-well-cube.webp' },
+    { key:'gem', label:'Gem', image:'assets/variant-backgrounds/variant-well-gem.webp' },
+    { key:'quack', label:'Quack', image:'assets/variant-backgrounds/variant-well-quack.webp' },
+    { key:'holofoil', label:'Holofoil', image:'assets/variant-backgrounds/variant-well-holofoil.webp' }
+  ];
+  const VARIANT_BACKGROUND_PRESET_MAP = Object.fromEntries(VARIANT_BACKGROUND_PRESETS.map((preset) => [preset.key,preset]));
+  const DEFAULT_VARIANT_BACKGROUNDS = Object.fromEntries(VARIANT_BACKGROUND_PRESETS.map((preset) => [preset.key,preset.image]));
+
   const DEFAULT_THEME = {
     bodyFont:'system', headingFont:'system', buttonFont:'system', customFontData:'', customFontName:'',
     baseSize:16, titleSize:48, pageTitleSize:34, groupTitleSize:20, spriteLabelSize:16, checklistButtonSize:16, textColor:'#ffffff', mutedColor:'#c8c3e5',
@@ -94,6 +107,7 @@
     collectionStyle:'open', collectionBgColor:'#f3dfb4', collectionBgImage:'', collectionBgMode:'cover', useBuiltInCollectionArt:true, collectionTextColor:'#2a2144', collectionBorderColor:'#ffe097', collectionRadius:24,
     cardBgColor:'#fffaf0', cardBgImage:'', cardBgMode:'cover', cardTextColor:'#33234e', cardBorderColor:'#bca8cf', cardRadius:20,
     wellBgColor:'#e7ddfa', wellBgImage:'', wellBgMode:'cover', useBuiltInWellArt:true, wellBorderColor:'#b9a8d5',
+    useVariantBackgrounds:true, variantBgMode:'cover', variantBackgrounds:DEFAULT_VARIANT_BACKGROUNDS,
     tabBgColor:'#14133d', tabActiveColor:'#ffcf55',
     summaryStyle:'text', summaryFont:'body', summaryTextEffect:'shadow', summaryEffectColor:'#000000', summaryEffectStrength:6, summaryNumberSize:20, summaryLabelSize:12, summaryNumberColor:'#ffffff', summaryLabelColor:'#c8c3e5', summaryBgColor:'#302b5c', summaryBorderColor:'#564d80', summaryRadius:16, summaryOpacity:100, summaryShowBars:false,
     buttonBgColor:'#ffffff', buttonTextColor:'#33234e', accentColor:'#59c8ff',
@@ -206,6 +220,20 @@
     };
   }
 
+  function normalizeVariantBackgroundKey(value) {
+    return String(value || '').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  }
+
+  function normalizeVariantBackgrounds(stored) {
+    const backgrounds = { ...DEFAULT_VARIANT_BACKGROUNDS };
+    if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return backgrounds;
+    Object.entries(stored).forEach(([rawKey,image]) => {
+      const key = normalizeVariantBackgroundKey(rawKey);
+      if (key && typeof image === 'string') backgrounds[key] = image;
+    });
+    return backgrounds;
+  }
+
   function normalizeDesign(stored = {}) {
     const storedTheme = stored.theme || {};
     const storedHeader = stored.header || {};
@@ -218,6 +246,7 @@
       theme:{
         ...DEFAULT_THEME,
         ...storedTheme,
+        variantBackgrounds:normalizeVariantBackgrounds(storedTheme.variantBackgrounds),
         pageBackgrounds:Object.fromEntries(rarities.map((rarity) => [rarity,{ ...DEFAULT_THEME.pageBackgrounds[rarity], ...(storedTheme.pageBackgrounds?.[rarity] || {}) }])),
         pageHeaderBackgrounds:Object.fromEntries(rarities.map((rarity) => {
           const pageHeader = { ...DEFAULT_THEME.pageHeaderBackgrounds[rarity], ...(storedTheme.pageHeaderBackgrounds?.[rarity] || {}) };
@@ -357,6 +386,37 @@
       cardImage:hasOwn(custom,'cardImage') ? custom.cardImage : '',
       cardMode:custom.cardMode || 'cover'
     };
+  }
+
+  function variantBackgroundSource(variant, theme = design.theme) {
+    if (!theme?.useVariantBackgrounds) return '';
+    const backgrounds = theme.variantBackgrounds || {};
+    const idKey = normalizeVariantBackgroundKey(variant?.id);
+    if (idKey && hasOwn(backgrounds,idKey)) return backgrounds[idKey] || '';
+    const nameKey = normalizeVariantBackgroundKey(variant?.name);
+    return nameKey && hasOwn(backgrounds,nameKey) ? backgrounds[nameKey] || '' : '';
+  }
+
+  function applyVariantBackground(element, variant, theme = design.theme) {
+    const image = variantBackgroundSource(variant,theme);
+    if (!image) return false;
+    applyCustomBackground(element,theme.wellBgColor,image,theme.variantBgMode || 'cover');
+    element.classList.add('has-variant-background');
+    return true;
+  }
+
+  function refreshRenderedVariantBackgrounds(theme = design.theme) {
+    const families = new Map(allFamilies().map((family) => [family.id,family]));
+    document.querySelectorAll('.card[data-family-id][data-variant-id]').forEach((card) => {
+      const family = families.get(card.dataset.familyId);
+      const variant = family ? familyVariants(family).find((item) => item.id === card.dataset.variantId) : null;
+      const imageWrap = card.querySelector('.image-wrap');
+      if (!variant || !imageWrap) return;
+      ['background-color','background-image','background-size','background-repeat','background-position']
+        .forEach((property) => imageWrap.style.removeProperty(property));
+      imageWrap.classList.remove('has-variant-background');
+      applyVariantBackground(imageWrap,variant,theme);
+    });
   }
 
   function familyVariants(family) {
@@ -557,6 +617,7 @@
     rightArt.src = displayImageSource(theme.rightArt);
     leftArt.hidden = !theme.leftArt;
     rightArt.hidden = !theme.rightArt;
+    refreshRenderedVariantBackgrounds(theme);
   }
 
   function renderHeader() {
@@ -802,6 +863,7 @@
     });
 
     const imageWrap = card.querySelector('.image-wrap');
+    applyVariantBackground(imageWrap,variant);
     imageWrap.addEventListener('dragenter', (event) => {
       if (!editMode || !hasDroppedImage(event.dataTransfer)) return;
       event.preventDefault();
@@ -1245,6 +1307,7 @@
     themeCollectionStyle:'collectionStyle', themeCollectionBgColor:'collectionBgColor', themeCollectionTextColor:'collectionTextColor', themeCollectionBorderColor:'collectionBorderColor', themeCollectionRadius:'collectionRadius', themeCollectionBgMode:'collectionBgMode', themeUseBuiltInCollectionArt:'useBuiltInCollectionArt',
     themeCardBgColor:'cardBgColor', themeCardTextColor:'cardTextColor', themeCardBorderColor:'cardBorderColor', themeCardRadius:'cardRadius', themeCardBgMode:'cardBgMode',
     themeWellBgColor:'wellBgColor', themeWellBorderColor:'wellBorderColor', themeWellBgMode:'wellBgMode', themeUseBuiltInWellArt:'useBuiltInWellArt',
+    themeUseVariantBackgrounds:'useVariantBackgrounds', themeVariantBgMode:'variantBgMode',
     themeTabBgColor:'tabBgColor', themeTabActiveColor:'tabActiveColor',
     themeButtonBgColor:'buttonBgColor', themeButtonTextColor:'buttonTextColor', themeAccentColor:'accentColor',
     themeArtWidth:'artWidth'
@@ -1257,6 +1320,139 @@
 
   function cloneJson(value) {
     return JSON.parse(JSON.stringify(value));
+  }
+
+  function readableVariantBackgroundLabel(key) {
+    return VARIANT_BACKGROUND_PRESET_MAP[key]?.label || key.split('-').filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ') || 'Variant';
+  }
+
+  function variantBackgroundSlots(theme = studioDraft || design.theme) {
+    const slots = new Map(VARIANT_BACKGROUND_PRESETS.map((preset) => [preset.key,{ key:preset.key, label:preset.label }]));
+    allFamilies().forEach((family) => {
+      const added = Array.isArray(design.families[family.id]?.addedVariants) ? design.families[family.id].addedVariants : [];
+      [...(family.variants || []),...added].forEach((variant) => {
+        const key = normalizeVariantBackgroundKey(variant.name || variant.id);
+        if (key && !slots.has(key)) slots.set(key,{ key, label:variant.name || readableVariantBackgroundLabel(key) });
+      });
+    });
+    Object.keys(theme?.variantBackgrounds || {}).forEach((rawKey) => {
+      const key = normalizeVariantBackgroundKey(rawKey);
+      if (key && !slots.has(key)) slots.set(key,{ key, label:readableVariantBackgroundLabel(key) });
+    });
+    const presetKeys = new Set(VARIANT_BACKGROUND_PRESETS.map((preset) => preset.key));
+    return [
+      ...VARIANT_BACKGROUND_PRESETS.map((preset) => slots.get(preset.key)),
+      ...[...slots.values()].filter((slot) => !presetKeys.has(slot.key)).sort((a,b) => a.label.localeCompare(b.label))
+    ].filter(Boolean);
+  }
+
+  function updateStudioVariantSample() {
+    const preview = document.querySelector('.studio-preview-well');
+    const theme = studioDraft || design.theme;
+    if (!preview || !theme) return;
+    ['background-color','background-image','background-size','background-repeat','background-position']
+      .forEach((property) => preview.style.removeProperty(property));
+    const image = theme.useVariantBackgrounds ? theme.variantBackgrounds?.base || '' : '';
+    if (image) applyCustomBackground(preview,theme.wellBgColor,image,theme.variantBgMode || 'cover');
+    preview.textContent = image ? 'Base' : 'Fallback';
+  }
+
+  function refreshVariantBackgroundEditorPreviews() {
+    const theme = studioDraft || design.theme;
+    const grid = document.getElementById('variantBackgroundGrid');
+    if (!theme || !grid) return;
+    grid.classList.toggle('is-disabled',!theme.useVariantBackgrounds);
+    const sizing = imageMode(theme.variantBgMode || 'cover');
+    grid.querySelectorAll('[data-variant-background-key]').forEach((item) => {
+      const key = item.dataset.variantBackgroundKey;
+      const image = theme.variantBackgrounds?.[key] || '';
+      const source = displayImageSource(image);
+      const preview = item.querySelector('.variant-background-preview');
+      preview.style.backgroundColor = theme.wellBgColor;
+      preview.style.backgroundImage = source ? `url("${source}")` : 'none';
+      preview.style.backgroundSize = sizing.size;
+      preview.style.backgroundRepeat = sizing.repeat;
+      preview.style.backgroundPosition = 'center';
+      item.classList.toggle('is-empty',!source);
+      const removeButton = item.querySelector('[data-remove-variant-background]');
+      if (removeButton) removeButton.disabled = !image;
+      const restoreButton = item.querySelector('[data-restore-variant-background]');
+      if (restoreButton) restoreButton.disabled = image === VARIANT_BACKGROUND_PRESET_MAP[key]?.image;
+    });
+    updateStudioVariantSample();
+  }
+
+  function renderVariantBackgroundEditors() {
+    const grid = document.getElementById('variantBackgroundGrid');
+    if (!grid || !studioDraft) return;
+    grid.replaceChildren();
+    variantBackgroundSlots(studioDraft).forEach(({ key,label }) => {
+      const item = document.createElement('section');
+      item.className = 'variant-background-editor';
+      item.dataset.variantBackgroundKey = key;
+
+      const preview = document.createElement('div');
+      preview.className = 'variant-background-preview';
+      preview.setAttribute('role','img');
+      preview.setAttribute('aria-label',`${label} background preview`);
+      const previewLabel = document.createElement('strong');
+      previewLabel.textContent = label;
+      preview.appendChild(previewLabel);
+
+      const uploadLabel = document.createElement('label');
+      uploadLabel.textContent = `Replace ${label}`;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.setAttribute('aria-label',`Replace ${label} variant background`);
+      uploadLabel.appendChild(input);
+
+      const actions = document.createElement('div');
+      actions.className = 'variant-background-item-actions';
+      const removeButton = document.createElement('button');
+      removeButton.type = 'button';
+      removeButton.dataset.removeVariantBackground = key;
+      removeButton.textContent = 'Remove';
+      actions.appendChild(removeButton);
+      const preset = VARIANT_BACKGROUND_PRESET_MAP[key];
+      if (preset) {
+        const restoreButton = document.createElement('button');
+        restoreButton.type = 'button';
+        restoreButton.dataset.restoreVariantBackground = key;
+        restoreButton.textContent = 'Restore included art';
+        actions.appendChild(restoreButton);
+      }
+
+      input.addEventListener('change', async () => {
+        if (!studioDraft) return;
+        await processEditorImage(input,`${label} variant background`,async (file) => {
+          const image = await resizeImage(file,artworkBounds('variantBackground'));
+          if (!studioDraft) throw new Error('editor-closed');
+          studioDraft.variantBackgrounds ||= {};
+          studioDraft.variantBackgrounds[key] = image;
+          previewStudioDraft();
+        });
+      });
+      removeButton.addEventListener('click', () => {
+        if (!studioDraft) return;
+        studioDraft.variantBackgrounds ||= {};
+        studioDraft.variantBackgrounds[key] = '';
+        previewStudioDraft();
+        setEditorStatus(document.getElementById('designStudioForm'),`${label} will use the fallback image area. Tap Save whole-site defaults to finish.`,'ready');
+      });
+      actions.querySelector('[data-restore-variant-background]')?.addEventListener('click', () => {
+        if (!studioDraft || !preset) return;
+        studioDraft.variantBackgrounds ||= {};
+        studioDraft.variantBackgrounds[key] = preset.image;
+        previewStudioDraft();
+        setEditorStatus(document.getElementById('designStudioForm'),`${label} included artwork restored. Tap Save whole-site defaults to finish.`,'ready');
+      });
+
+      item.append(preview,uploadLabel,actions);
+      grid.appendChild(item);
+    });
+    refreshVariantBackgroundEditorPreviews();
   }
 
   function populateFontSelects() {
@@ -1304,12 +1500,14 @@
     Object.keys(STUDIO_IMAGE_INPUTS).forEach((id) => { document.getElementById(id).value = ''; });
     document.getElementById('themeCustomFontFile').value = '';
     updateStudioOutputs();
+    renderVariantBackgroundEditors();
   }
 
   function previewStudioDraft() {
     design.theme = studioDraft;
     applyTheme();
     updateStudioOutputs();
+    refreshVariantBackgroundEditorPreviews();
   }
 
   function openDesignStudio() {
@@ -1493,6 +1691,16 @@
     preview.style.backgroundRepeat = sizing.repeat;
     preview.style.borderColor = design.theme.cardBorderColor;
     preview.style.color = design.theme.cardTextColor;
+    const wellPreview = preview.querySelector('.editor-preview');
+    if (wellPreview) {
+      ['background-color','background-image','background-size','background-repeat','background-position']
+        .forEach((property) => wellPreview.style.removeProperty(property));
+      wellPreview.classList.remove('has-variant-background');
+      if (!applyVariantBackground(wellPreview,variant)) {
+        const fallbackImage = design.theme.wellBgImage || '';
+        if (fallbackImage) applyCustomBackground(wellPreview,design.theme.wellBgColor,fallbackImage,design.theme.wellBgMode);
+      }
+    }
   }
 
   function updateHeaderSummaryOutputs() {
@@ -1701,6 +1909,7 @@
       collectionBgImage:{ width:2000, height:1400, maxBytes:560000, quality:.94, minQuality:.8 },
       cardBgImage:{ width:1200, height:1500, maxBytes:340000, quality:.92, minQuality:.78 },
       wellBgImage:{ width:1200, height:1200, maxBytes:320000, quality:.92, minQuality:.78 },
+      variantBackground:{ width:1200, height:1200, maxBytes:160000, quality:.9, minQuality:.76 },
       leftArt:{ width:1200, height:2400, maxBytes:520000, quality:.92, minQuality:.78 },
       rightArt:{ width:1200, height:2400, maxBytes:520000, quality:.92, minQuality:.78 },
       page:{ width:2560, height:2560, maxBytes:700000, quality:.94, minQuality:.8 },
@@ -2562,6 +2771,23 @@
     });
   });
 
+  document.getElementById('restoreVariantBackgroundPackBtn').addEventListener('click', () => {
+    if (!studioDraft) return;
+    studioDraft.useVariantBackgrounds = true;
+    studioDraft.variantBackgrounds = { ...(studioDraft.variantBackgrounds || {}), ...DEFAULT_VARIANT_BACKGROUNDS };
+    document.getElementById('themeUseVariantBackgrounds').checked = true;
+    previewStudioDraft();
+    setEditorStatus(document.getElementById('designStudioForm'),'Included Base, Gold, Gummy, Galaxy, Cube, Gem, Quack, and Holofoil artwork restored. Tap Save whole-site defaults to finish.','ready');
+  });
+
+  document.getElementById('clearVariantBackgroundsBtn').addEventListener('click', () => {
+    if (!studioDraft) return;
+    studioDraft.variantBackgrounds ||= {};
+    variantBackgroundSlots(studioDraft).forEach(({ key }) => { studioDraft.variantBackgrounds[key] = ''; });
+    previewStudioDraft();
+    setEditorStatus(document.getElementById('designStudioForm'),'All shared variant artwork will be removed. Tap Save whole-site defaults to finish.','ready');
+  });
+
   document.querySelectorAll('[data-remove-theme-image]').forEach((button) => {
     button.addEventListener('click', () => {
       if (!studioDraft) return;
@@ -3095,7 +3321,7 @@
   renderAll();
   const activeHash = `#${activeRarity.toLowerCase()}`;
   if (location.hash !== activeHash) history.replaceState({ rarity:activeRarity },'',activeHash);
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js?v=41').catch(() => {});
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js?v=42').catch(() => {});
   setTimeout(checkForPublishedDesignUpdate,2500);
   setInterval(checkForPublishedDesignUpdate,45000);
   window.addEventListener('online',checkForPublishedDesignUpdate);
