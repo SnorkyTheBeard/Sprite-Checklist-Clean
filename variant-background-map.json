@@ -1,0 +1,34 @@
+{
+  "base": {
+    "card": "card-1200x1500/variant-card-base.webp",
+    "well": "well-1200x1200/variant-well-base.webp"
+  },
+  "gold": {
+    "card": "card-1200x1500/variant-card-gold.webp",
+    "well": "well-1200x1200/variant-well-gold.webp"
+  },
+  "gummy": {
+    "card": "card-1200x1500/variant-card-gummy.webp",
+    "well": "well-1200x1200/variant-well-gummy.webp"
+  },
+  "galaxy": {
+    "card": "card-1200x1500/variant-card-galaxy.webp",
+    "well": "well-1200x1200/variant-well-galaxy.webp"
+  },
+  "cube": {
+    "card": "card-1200x1500/variant-card-cube.webp",
+    "well": "well-1200x1200/variant-well-cube.webp"
+  },
+  "gem": {
+    "card": "card-1200x1500/variant-card-gem.webp",
+    "well": "well-1200x1200/variant-well-gem.webp"
+  },
+  "quack": {
+    "card": "card-1200x1500/variant-card-quack.webp",
+    "well": "well-1200x1200/variant-well-quack.webp"
+  },
+  "holofoil": {
+    "card": "card-1200x1500/variant-card-holofoil.webp",
+    "well": "well-1200x1200/variant-well-holofoil.webp"
+  }
+}
