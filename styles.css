@@ -358,4 +358,8 @@ h4,
     background: rgba(91,96,106,.88) !important;
   }
 }
-
+#activePageTitle {
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.95);
+  paint-order: stroke fill;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.75);
+}
