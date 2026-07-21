@@ -488,3 +488,23 @@ footer {
   paint-order: stroke fill;
   text-shadow: 0 2px 5px rgba(0,0,0,.85);
 }
+/* Final Sprite Tracker font */
+:root {
+  --font-body: "Fredoka", sans-serif !important;
+  --font-heading: "Fredoka", sans-serif !important;
+  --font-button: "Fredoka", sans-serif !important;
+  --font-summary: "Fredoka", sans-serif !important;
+}
+
+body,
+button,
+input,
+h1,
+h2,
+h3,
+h4,
+.kicker,
+.page-eyebrow,
+.summary-box {
+  font-family: "Fredoka", sans-serif !important;
+}
