@@ -1,12 +1,12 @@
-const CACHE = 'galaxy-sprite-checklist-v44';
+const CACHE = 'galaxy-sprite-checklist-v45';
 const CORE = [
   './',
   './index.html',
-  './styles.css?v=54',
+  './styles.css?v=55',
   './published-design.js',
-  './art-config.js?v=54',
-  './data.js?v=54',
-  './app.js?v=54',
+  './art-config.js?v=55',
+  './data.js?v=55',
+  './app.js?v=55',
   './manifest.webmanifest',
   './fonts/comic-neue-regular.woff2',
   './fonts/comic-neue-bold.woff2',
@@ -24,7 +24,8 @@ const CORE = [
   './assets/page-backgrounds/page-bg-rare.webp',
   './assets/page-backgrounds/page-bg-epic.webp',
   './assets/page-backgrounds/page-bg-legendary.webp',
-  './assets/page-backgrounds/page-bg-mythic.webp'
+  './assets/page-backgrounds/page-bg-mythic.webp',
+  './assets/header/main-header.webp'
 ];
 const FRESH_CODE_FILES = new Set(['styles.css','art-config.js','data.js','app.js','manifest.webmanifest']);
 

@@ -267,3 +267,95 @@ noscript { display:block; padding:12px; text-align:center; background:#7e2f42; }
   *,*::before,*::after { scroll-behavior:auto!important; transition-duration:.01ms!important; }
   .card.search-target { animation:none; }
 }
+
+/* Minimal frosted-card design — July 2026 */
+:root {
+  --font-body: Arial, "Helvetica Neue", Helvetica, sans-serif !important;
+  --font-heading: Arial, "Helvetica Neue", Helvetica, sans-serif !important;
+  --font-button: Arial, "Helvetica Neue", Helvetica, sans-serif !important;
+  --font-summary: Arial, "Helvetica Neue", Helvetica, sans-serif !important;
+}
+
+body,
+button,
+input,
+h1,
+h2,
+h3,
+h4,
+.kicker,
+.page-eyebrow,
+.summary-box {
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif !important;
+}
+
+.card {
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.34) !important;
+  background:
+    linear-gradient(145deg,rgba(178,183,193,.36),rgba(72,77,87,.25)) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(115%);
+  backdrop-filter: blur(18px) saturate(115%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.34),
+    inset 0 -1px 0 rgba(0,0,0,.14),
+    0 10px 24px rgba(0,0,0,.2) !important;
+}
+
+.card h4 {
+  color: #fff !important;
+  font-weight: 700;
+  text-shadow: 0 1px 3px rgba(0,0,0,.72);
+}
+
+.collect-button {
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.3) !important;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.24) 0%,
+      rgba(255,255,255,.08) 12%,
+      rgba(29,29,34,.97) 48%,
+      rgba(3,3,5,.99) 100%
+    ) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.34),
+    inset 0 -2px 4px rgba(0,0,0,.8),
+    0 5px 12px rgba(0,0,0,.3);
+  font-weight: 700;
+  text-shadow: 0 1px 2px #000;
+}
+
+.collect-button:active {
+  transform: translateY(1px);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.12) 0%,
+      rgba(18,18,22,.98) 45%,
+      #000 100%
+    ) !important;
+}
+
+.collect-button .box {
+  border-color: #fff !important;
+  background: rgba(255,255,255,.06);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.55);
+}
+
+.card.collected .collect-button .box {
+  background: #fff !important;
+}
+
+.card.collected .collect-button .box::after {
+  color: #050505 !important;
+  text-shadow: none;
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .card {
+    background: rgba(91,96,106,.88) !important;
+  }
+}
+
