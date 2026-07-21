@@ -25,7 +25,7 @@ const CORE = [
   './assets/page-backgrounds/page-bg-epic.webp',
   './assets/page-backgrounds/page-bg-legendary.webp',
   './assets/page-backgrounds/page-bg-mythic.webp',
-  './assets/header/main-header.webp'
+  './assets/header/main-header.webp?v=2'
 ];
 const FRESH_CODE_FILES = new Set(['styles.css','art-config.js','data.js','app.js','manifest.webmanifest']);
 
