@@ -1,30 +1,18 @@
 /*
-  SPRITE CHECKLIST — CODE-BASED ARTWORK
+  SPRITE CHECKLIST — PAGE & HEADER ART UPDATE
 
-  Put new artwork inside the repository, then enter its repository-relative path
-  below. Example: "assets/custom/rare-header.webp"
-
-  null = keep the image already defined by published-design.js
-  ""   = intentionally remove that image
-
-  Image fit values: "cover", "contain", "tile", "repeat", or "stretch"
-  Header positions: "center", "upper", "top", or "bottom"
-
-  Group and sprite IDs are listed in data.js. Keep IDs lowercase and unchanged.
+  Replace the repository's existing art-config.js with this file, then upload
+  the included assets folder to the repository root.
 */
 window.SPRITE_ART_CONFIG = {
-  siteBackground: {
-    image: null,
-    fit: null
-  },
+  siteBackground: { image: null, fit: null },
 
   mainHeader: {
-    image: null,
-    fit: null,
-    position: null
+    image: "assets/header/main-header.webp",
+    fit: "cover",
+    position: "center"
   },
 
-  /* Set a value to replace published text. Leave null to keep it. */
   text: {
     kicker: null,
     title: null,
@@ -35,27 +23,16 @@ window.SPRITE_ART_CONFIG = {
     footerNote: null
   },
 
-  /* Example: Rare:{ title:"Rare Sprites", eyebrow:"", description:"" } */
-  pages: {
-    Rare: null,
-    Epic: null,
-    Legendary: null,
-    Mythic: null
-  },
+  pages: { Rare: null, Epic: null, Legendary: null, Mythic: null },
 
   rarityBackgrounds: {
-    Rare: { image:"assets/page-backgrounds/page-bg-rare.webp", fit:"tile", color:"#071a3c" },
-    Epic: { image:"assets/page-backgrounds/page-bg-epic.webp", fit:"tile", color:"#170b38" },
-    Legendary: { image:"assets/page-backgrounds/page-bg-legendary.webp", fit:"tile", color:"#160f08" },
-    Mythic: { image:"assets/page-backgrounds/page-bg-mythic.webp", fit:"tile", color:"#16091d" }
+    Rare:      { image: "assets/page-backgrounds/page-bg-rare.webp",      fit: "cover", color: "#061b45" },
+    Epic:      { image: "assets/page-backgrounds/page-bg-epic.webp",      fit: "cover", color: "#190b3d" },
+    Legendary: { image: "assets/page-backgrounds/page-bg-legendary.webp", fit: "cover", color: "#431400" },
+    Mythic:    { image: "assets/page-backgrounds/page-bg-mythic.webp",    fit: "cover", color: "#7c5700" }
   },
 
-  rarityHeaders: {
-    Rare: null,
-    Epic: null,
-    Legendary: null,
-    Mythic: null
-  },
+  rarityHeaders: { Rare: null, Epic: null, Legendary: null, Mythic: null },
 
   variantBackgrounds: {
     base: "assets/variant-backgrounds/variant-well-base.webp",
@@ -68,33 +45,7 @@ window.SPRITE_ART_CONFIG = {
     holofoil: "assets/variant-backgrounds/variant-well-holofoil.webp"
   },
 
-  /*
-    Example group background:
-    groupBackgrounds: {
-      water: { image:"assets/custom/water-group.webp", fit:"cover", color:"#071a3c", visible:true }
-    }
-  */
   groupBackgrounds: {},
-
-  /*
-    Example sprite and card artwork:
-    sprites: {
-      water: {
-        base: {
-          image: "assets/custom/water-base.webp",
-          visible: true,
-          cardBackground: "assets/custom/water-base-card.webp",
-          cardFit: "cover",
-          cardColor: "#071a3c"
-        }
-      }
-    }
-  */
   sprites: {},
-
-  sideArt: {
-    left: null,
-    right: null,
-    width: null
-  }
+  sideArt: { left: null, right: null, width: null }
 };
