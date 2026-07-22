@@ -13,6 +13,7 @@
 
   const STORAGE_SCOPE = appStorageScope();
   const PROGRESS_KEY = `galaxy_sprite_tracker_progress_v2_${STORAGE_SCOPE}`;
+  const VIEW_MODES_KEY = `galaxy_sprite_tracker_view_modes_v1_${STORAGE_SCOPE}`;
   const SPRITE_CARD_EDITS_KEY = `galaxy_sprite_tracker_sprite_cards_v1_${STORAGE_SCOPE}`;
   const LEGACY_PROGRESS_KEY = 'galaxy_sprite_tracker_progress_v1';
   const CARD_REORDER_MIME = 'application/x-sprite-card';
@@ -68,8 +69,14 @@
   function loadSpriteCardEdits() {
     const saved = readJson(SPRITE_CARD_EDITS_KEY);
     return {
-      families:saved?.families && typeof saved.families === 'object' ? saved.families : {}
+      families:saved?.families && typeof saved.families === 'object' ? saved.families : {},
+      customFamilies:Array.isArray(saved?.customFamilies) ? saved.customFamilies : [],
+      lastPublishedSnapshot:saved?.lastPublishedSnapshot || ''
     };
+  }
+
+  function loadViewModes() {
+    return readJson(VIEW_MODES_KEY) || {};
   }
 
   const DEFAULT_HEADER = {
@@ -291,6 +298,7 @@
   );
   let state = loadProgress();
   let spriteCardEdits = loadSpriteCardEdits();
+  let spriteViewModes = loadViewModes();
   let spriteEditMode = false;
   let activeRarity = rarityFromHash() || defaultRarity;
   let toastTimer = 0;
@@ -313,10 +321,16 @@
   const spriteSearchStatus = document.getElementById('spriteSearchStatus');
   const clearSpriteSearchBtn = document.getElementById('clearSpriteSearchBtn');
   const spriteEditorToggle = document.getElementById('spriteEditorToggle');
+  const spriteViewToggle = document.getElementById('spriteViewToggle');
   const addSpriteDialog = document.getElementById('addSpriteDialog');
   const addSpriteForm = document.getElementById('addSpriteForm');
   const addSpriteFamilyId = document.getElementById('addSpriteFamilyId');
   const newSpriteName = document.getElementById('newSpriteName');
+  const addSpriteGroupBtn = document.getElementById('addSpriteGroupBtn');
+  const addSpriteGroupDialog = document.getElementById('addSpriteGroupDialog');
+  const addSpriteGroupForm = document.getElementById('addSpriteGroupForm');
+  const newSpriteGroupName = document.getElementById('newSpriteGroupName');
+  const addSpriteGroupRarity = document.getElementById('addSpriteGroupRarity');
   const publishSpritesBtn = document.getElementById('publishSpritesBtn');
   const publishSpritesDialog = document.getElementById('publishSpritesDialog');
   const publishSpritesForm = document.getElementById('publishSpritesForm');
@@ -331,6 +345,27 @@
       showToast('Progress could not be saved in this browser.');
       return false;
     }
+  }
+
+  function currentSpriteViewMode() {
+    return spriteViewModes[activeRarity] === 'list' ? 'list' : 'card';
+  }
+
+  function applySpriteViewMode() {
+    const listView = currentSpriteViewMode() === 'list';
+    document.body.classList.toggle('sprite-list-view',listView);
+    spriteViewToggle.setAttribute('aria-pressed',String(listView));
+    spriteViewToggle.textContent = listView ? 'Card view' : 'List view';
+    spriteViewToggle.setAttribute('aria-label',`Use ${listView ? 'card' : 'list'} view on the ${activeRarity} page`);
+  }
+
+  function setSpriteViewMode(mode) {
+    spriteViewModes[activeRarity] = mode === 'list' ? 'list' : 'card';
+    try { localStorage.setItem(VIEW_MODES_KEY,JSON.stringify(spriteViewModes)); } catch { /* The choice can remain active for this visit. */ }
+    applySpriteViewMode();
+    renderCollections();
+    updateCounters();
+    showToast(`${activeRarity}: ${currentSpriteViewMode() === 'list' ? 'list' : 'card'} view`);
   }
 
   function saveSpriteCardEdits() {
@@ -364,8 +399,13 @@
   }
 
   function allFamilies() {
-    const custom = Array.isArray(design.customFamilies) ? design.customFamilies : [];
-    return [...baseData,...custom];
+    const publishedCustom = Array.isArray(design.customFamilies) ? design.customFamilies : [];
+    const localCustom = Array.isArray(spriteCardEdits.customFamilies) ? spriteCardEdits.customFamilies : [];
+    const unique = new Map();
+    [...baseData,...publishedCustom,...localCustom].forEach((family) => {
+      if (family?.id && !unique.has(family.id)) unique.set(family.id,family);
+    });
+    return [...unique.values()];
   }
 
   function familyRarity(family) {
@@ -448,6 +488,38 @@
     let id = base;
     let suffix = 2;
     while (reserved.has(id)) id = `${base}-${suffix++}`;
+    return id;
+  }
+
+  function uniqueFamilyId(name) {
+    const slug = String(name || '').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'new-group';
+    const base = `custom-${slug}`;
+    const reserved = new Set(allFamilies().map((family) => family.id));
+    let id = base;
+    let suffix = 2;
+    while (reserved.has(id)) id = `${base}-${suffix++}`;
+    return id;
+  }
+
+  function openAddSpriteGroupDialog() {
+    newSpriteGroupName.value = '';
+    addSpriteGroupRarity.textContent = activeRarity;
+    addSpriteGroupDialog.showModal();
+    setTimeout(() => newSpriteGroupName.focus(),0);
+  }
+
+  function addSpriteGroup(name) {
+    const previousEdits = cloneJson(spriteCardEdits);
+    const id = uniqueFamilyId(name);
+    spriteCardEdits.customFamilies ||= [];
+    spriteCardEdits.customFamilies.push({
+      id,
+      name,
+      rarity:activeRarity,
+      variants:[{ id:'base', name:'Base', image:'' }]
+    });
+    familyCardEdits(id).order = ['base'];
+    if (!saveCardEditOrRestore(previousEdits)) return null;
     return id;
   }
 
@@ -650,17 +722,22 @@
   }
 
   function spriteCardEditsFingerprint() {
-    return JSON.stringify(spriteCardEdits.families || {});
+    return JSON.stringify({
+      families:spriteCardEdits.families || {},
+      customFamilies:Array.isArray(spriteCardEdits.customFamilies) ? spriteCardEdits.customFamilies : []
+    });
   }
 
   function hasUnpublishedSpriteChanges() {
     const families = spriteCardEdits.families || {};
-    const hasChanges = Object.values(families).some((edits) => edits && typeof edits === 'object' && (
+    const hasFamilyChanges = Object.values(families).some((edits) => edits && typeof edits === 'object' && (
       (Array.isArray(edits.added) && edits.added.length)
       || (Array.isArray(edits.deleted) && edits.deleted.length)
       || (Array.isArray(edits.order) && edits.order.length)
       || (edits.images && typeof edits.images === 'object' && Object.keys(edits.images).length)
     ));
+    const hasNewGroups = Array.isArray(spriteCardEdits.customFamilies) && spriteCardEdits.customFamilies.length > 0;
+    const hasChanges = hasFamilyChanges || hasNewGroups;
     return Boolean(hasChanges && spriteCardEdits.lastPublishedSnapshot !== spriteCardEditsFingerprint());
   }
 
@@ -742,7 +819,35 @@
   function buildPublishedSpriteDesign(basePublishedDesign) {
     const nextDesign = cloneJson(basePublishedDesign);
     nextDesign.families ||= {};
+    nextDesign.customFamilies = Array.isArray(nextDesign.customFamilies) ? nextDesign.customFamilies : [];
     const assets = [];
+
+    (Array.isArray(spriteCardEdits.customFamilies) ? spriteCardEdits.customFamilies : []).forEach((localFamily) => {
+      if (!localFamily?.id) return;
+      const publishedFamily = nextDesign.customFamilies.find((family) => family.id === localFamily.id);
+      const familyRecord = {
+        id:localFamily.id,
+        name:localFamily.name || 'New sprite group',
+        rarity:rarities.includes(localFamily.rarity) ? localFamily.rarity : defaultRarity,
+        variants:Array.isArray(localFamily.variants) && localFamily.variants.length
+          ? cloneJson(localFamily.variants)
+          : [{ id:'base', name:'Base', image:'' }]
+      };
+      if (publishedFamily) Object.assign(publishedFamily,familyRecord);
+      else nextDesign.customFamilies.push(familyRecord);
+      const familyDesign = nextDesign.families[localFamily.id] ||= {};
+      familyDesign.name = familyRecord.name;
+      familyDesign.rarity = familyRecord.rarity;
+      familyDesign.visible = true;
+      familyDesign.deleted = false;
+      familyDesign.variants ||= {};
+      familyRecord.variants.forEach((variant) => {
+        if (!variant?.id) return;
+        familyDesign.variants[variant.id] ||= {};
+        familyDesign.variants[variant.id].deleted = false;
+      });
+    });
+
     Object.entries(spriteCardEdits.families || {}).forEach(([familyId,rawEdits]) => {
       if (!rawEdits || typeof rawEdits !== 'object' || Array.isArray(rawEdits)) return;
       const edits = rawEdits;
@@ -842,6 +947,7 @@
     });
 
     design.families = cloneJson(nextDesign.families || {});
+    design.customFamilies = cloneJson(nextDesign.customFamilies || []);
     design._meta = { ...(design._meta || {}), ...(nextDesign._meta || {}) };
     Object.entries(nextDesign.families || {}).forEach(([familyId,family]) => {
       if (!spriteCardEdits.families?.[familyId]) return;
@@ -1077,12 +1183,20 @@
     showToast(`${variantView(family,variant).name || family.name}: ${message}`);
   }
 
+  function cardDropAfter(card,event) {
+    const rect = card.getBoundingClientRect();
+    return currentSpriteViewMode() === 'list'
+      ? event.clientY > rect.top + rect.height / 2
+      : event.clientX > rect.left + rect.width / 2;
+  }
+
   function makeCard(family,variant,{ eager = false } = {}) {
     const current = variantState(family.id,variant.id);
     const view = variantView(family,variant);
     const familyInfo = familyView(family);
     const rowVariants = visibleVariants(family);
     const rowIndex = rowVariants.findIndex((item) => item.id === variant.id);
+    const listView = currentSpriteViewMode() === 'list';
     const card = document.createElement('article');
     card.className = 'card';
     card.dataset.familyId = family.id;
@@ -1145,9 +1259,9 @@
     const moveLeft = document.createElement('button');
     moveLeft.type = 'button';
     moveLeft.className = 'sprite-move-step';
-    moveLeft.textContent = '←';
+    moveLeft.textContent = listView ? '↑' : '←';
     moveLeft.disabled = rowIndex <= 0;
-    moveLeft.setAttribute('aria-label',`Move ${view.name || 'sprite'} left`);
+    moveLeft.setAttribute('aria-label',`Move ${view.name || 'sprite'} ${listView ? 'up' : 'left'}`);
     const moveHandle = document.createElement('button');
     moveHandle.type = 'button';
     moveHandle.className = 'sprite-move-handle';
@@ -1157,9 +1271,9 @@
     const moveRight = document.createElement('button');
     moveRight.type = 'button';
     moveRight.className = 'sprite-move-step';
-    moveRight.textContent = '→';
+    moveRight.textContent = listView ? '↓' : '→';
     moveRight.disabled = rowIndex < 0 || rowIndex === rowVariants.length - 1;
-    moveRight.setAttribute('aria-label',`Move ${view.name || 'sprite'} right`);
+    moveRight.setAttribute('aria-label',`Move ${view.name || 'sprite'} ${listView ? 'down' : 'right'}`);
     const deleteButton = document.createElement('button');
     deleteButton.type = 'button';
     deleteButton.className = 'sprite-delete-button';
@@ -1171,6 +1285,14 @@
     const title = document.createElement('h4');
     title.textContent = view.name || '';
     title.hidden = !view.name;
+
+    const listLabel = document.createElement('div');
+    listLabel.className = 'sprite-list-label';
+    const listGroupName = document.createElement('strong');
+    listGroupName.textContent = familyInfo.name || family.name || 'Sprite';
+    const listVariantName = document.createElement('span');
+    listVariantName.textContent = view.name || 'Unnamed';
+    listLabel.append(listGroupName,listVariantName);
 
     const collect = document.createElement('button');
     collect.type = 'button';
@@ -1184,7 +1306,7 @@
 
     const masterLabel = document.createElement('div');
     masterLabel.className = 'master-label';
-    card.append(crown,imageWrap,editorTools,title,collect,masterLabel);
+    card.append(crown,imageWrap,editorTools,title,listLabel,collect,masterLabel);
 
     const toggleCollected = () => {
       current.collected = !current.collected;
@@ -1259,7 +1381,7 @@
       if (!spriteEditMode || ![...event.dataTransfer.types].includes(CARD_REORDER_MIME)) return;
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
-      const placeAfter = event.clientX > card.getBoundingClientRect().left + card.offsetWidth / 2;
+      const placeAfter = cardDropAfter(card,event);
       card.classList.toggle('reorder-before',!placeAfter);
       card.classList.toggle('reorder-after',placeAfter);
     });
@@ -1274,7 +1396,7 @@
         const payload = event.dataTransfer.getData(CARD_REORDER_MIME) || event.dataTransfer.getData('text/plain');
         const source = JSON.parse(payload);
         if (source.familyId !== family.id) return showToast('Sprite cards stay in their current row.');
-        const placeAfter = event.clientX > card.getBoundingClientRect().left + card.offsetWidth / 2;
+        const placeAfter = cardDropAfter(card,event);
         reorderSpriteCard(family,source.variantId,variant.id,placeAfter);
       } catch {
         showToast('That sprite card could not be moved.');
@@ -1381,17 +1503,24 @@
       title.textContent = group.name || '';
       title.hidden = !group.name;
       const meta = document.createElement('div');
+      const progressCounts = document.createElement('div');
+      const masteredCount = document.createElement('span');
       const count = document.createElement('span');
       const hint = document.createElement('span');
       const headerActions = document.createElement('div');
       const addButton = document.createElement('button');
       meta.className = 'collection-meta';
+      progressCounts.className = 'collection-progress-counts';
+      progressCounts.setAttribute('aria-label',`${group.name || 'Sprite'} progress`);
+      masteredCount.className = 'collection-count collection-mastered-count';
+      masteredCount.textContent = `${stats.mastered} / ${stats.total} mastered`;
       count.className = 'collection-count';
       count.textContent = `${stats.collected} / ${stats.total} collected`;
       hint.className = 'row-hint';
       hint.setAttribute('aria-hidden','true');
       hint.textContent = 'Swipe variants →';
-      meta.append(count,hint);
+      progressCounts.append(masteredCount,count);
+      meta.append(progressCounts,hint);
       headerActions.className = 'collection-head-actions';
       addButton.type = 'button';
       addButton.className = 'add-sprite-button';
@@ -1433,7 +1562,8 @@
       const family = allFamilies().find((item) => item.id === section.dataset.familyId);
       if (!family) return;
       const stats = familyStats(family);
-      section.querySelector('.collection-count').textContent = `${stats.collected} / ${stats.total} collected`;
+      section.querySelector('.collection-count:not(.collection-mastered-count)').textContent = `${stats.collected} / ${stats.total} collected`;
+      section.querySelector('.collection-mastered-count').textContent = `${stats.mastered} / ${stats.total} mastered`;
     });
     tabsEl.querySelectorAll('.tab').forEach((tab) => {
       const rarity = rarities.find((name) => tab.id === `tab-${name.toLowerCase()}`);
@@ -1447,6 +1577,7 @@
     applyTheme();
     renderHeader();
     renderTabs();
+    applySpriteViewMode();
     renderCollections();
     updateCounters();
     updatePublishButton();
@@ -1458,6 +1589,7 @@
     activeRarity = rarity;
     applyTheme();
     renderTabs();
+    applySpriteViewMode();
     renderCollections();
     updateCounters();
     const hash = `#${rarity.toLowerCase()}`;
@@ -1649,6 +1781,8 @@
     if (!event.target.closest('.sprite-search')) closeSpriteSearchResults();
   });
   spriteEditorToggle.addEventListener('click',() => setSpriteEditMode(!spriteEditMode));
+  spriteViewToggle.addEventListener('click',() => setSpriteViewMode(currentSpriteViewMode() === 'list' ? 'card' : 'list'));
+  addSpriteGroupBtn.addEventListener('click',openAddSpriteGroupDialog);
   publishSpritesBtn.addEventListener('click',openPublishSpritesDialog);
   publishSpritesForm.addEventListener('submit',async (event) => {
     event.preventDefault();
@@ -1695,6 +1829,20 @@
     showToast(`${name} sprite card added — tap its image area to upload artwork`);
   });
   document.getElementById('cancelAddSpriteBtn').addEventListener('click',() => addSpriteDialog.close());
+  addSpriteGroupForm.addEventListener('submit',(event) => {
+    event.preventDefault();
+    const name = newSpriteGroupName.value.trim();
+    if (!name) return;
+    const id = addSpriteGroup(name);
+    if (!id) return;
+    addSpriteGroupDialog.close();
+    renderTabs();
+    renderCollections();
+    updateCounters();
+    document.querySelector(`.collection[data-family-id="${id}"]`)?.scrollIntoView({ behavior:'smooth', block:'center' });
+    showToast(`${name} added to ${activeRarity} — upload the Base sprite image`);
+  });
+  document.getElementById('cancelAddSpriteGroupBtn').addEventListener('click',() => addSpriteGroupDialog.close());
   window.addEventListener('hashchange',() => switchRarity(rarityFromHash() || defaultRarity));
   document.getElementById('resetBtn').addEventListener('click',() => resetDialog.showModal());
   document.getElementById('confirmResetBtn').addEventListener('click',resetProgress);
@@ -1703,6 +1851,6 @@
   const activeHash = `#${activeRarity.toLowerCase()}`;
   if (location.hash !== activeHash) history.replaceState({ rarity:activeRarity },'',activeHash);
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./service-worker.js?v=62',{ updateViaCache:'none' }).then((registration) => registration.update()).catch(() => {});
+    navigator.serviceWorker.register('./service-worker.js?v=65',{ updateViaCache:'none' }).then((registration) => registration.update()).catch(() => {});
   }
 })();
