@@ -1,18 +1,19 @@
-SPRITE CHECKLIST VERSION 65 UPDATE
+SPRITE CHECKLIST VERSION 66 UPDATE
 
-This ZIP contains the matching files required for:
-- Card/List view switching
-- A live Mastered counter beside Collected for every sprite group
-- Adding completely new sprite groups
-- The new crown-and-check app icon
+This ZIP includes:
+- A manually entered rarity percentage for every individual sprite card
+- The percentage displayed immediately left of Base, Gold, Gummy, etc.
+- The percentage displayed before the variant name in List View
+- Saving and GitHub publishing for percentages
+- Card/List view, live group counters, new groups, editing, and app icons
 
 HOW TO USE
-1. Extract this ZIP on your computer.
-2. Open the extracted Sprite-Checklist-v65-Update folder.
+1. Extract this ZIP.
+2. Open the extracted Sprite-Checklist-v66-Update folder.
 3. Upload index.html, app.js, styles.css, service-worker.js, and
    manifest.webmanifest to the root of the GitHub repository.
-4. Open the Icons folder and upload its three PNG files into the repository's
-   existing Icons folder (capital I).
+4. Upload the three PNG files inside Icons to the repository's existing Icons
+   folder (capital I).
 5. Commit the changes.
 
-All code files are version 65 and must be uploaded together.
+All version 66 code files must be uploaded together.

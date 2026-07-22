@@ -1,13 +1,13 @@
-const CACHE = 'galaxy-sprite-checklist-v65';
+const CACHE = 'galaxy-sprite-checklist-v66';
 const CORE = [
   './',
   './index.html',
-  './styles.css?v=65',
+  './styles.css?v=66',
   './published-design.js',
-  './art-config.js?v=65',
-  './data.js?v=65',
-  './app.js?v=65',
-  './manifest.webmanifest?v=65',
+  './art-config.js?v=66',
+  './data.js?v=66',
+  './app.js?v=66',
+  './manifest.webmanifest?v=66',
   './fonts/comic-neue-regular.woff2',
   './fonts/comic-neue-bold.woff2',
   './Icons/icon-180.png?v=2',

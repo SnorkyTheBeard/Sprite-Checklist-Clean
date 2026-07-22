@@ -390,6 +390,7 @@
     if (!Array.isArray(edits.order)) edits.order = [];
     if (!Array.isArray(edits.publishedAdded)) edits.publishedAdded = [];
     if (!edits.images || typeof edits.images !== 'object' || Array.isArray(edits.images)) edits.images = {};
+    if (!edits.percentages || typeof edits.percentages !== 'object' || Array.isArray(edits.percentages)) edits.percentages = {};
     return edits;
   }
 
@@ -431,6 +432,7 @@
     return {
       name:hasOwn(custom,'name') ? custom.name : variant.name,
       image:hasOwn(cardEdits.images,variant.id) ? cardEdits.images[variant.id] : (hasOwn(custom,'image') ? custom.image : variant.image),
+      rarityPercentage:hasOwn(cardEdits.percentages,variant.id) ? cardEdits.percentages[variant.id] : String(custom.rarityPercentage || ''),
       visible:hasOwn(custom,'visible') ? Boolean(custom.visible) : true,
       deleted:Boolean(custom.deleted) || (Array.isArray(cardEdits.deleted) && cardEdits.deleted.includes(variant.id)),
       customCard:Boolean(custom.customCard),
@@ -557,6 +559,7 @@
     if (isPublishedVariant && !edits.deleted.includes(variant.id)) edits.deleted.push(variant.id);
     edits.order = orderedVariants(family).map((item) => item.id).filter((id) => id !== variant.id);
     delete edits.images[variant.id];
+    delete edits.percentages[variant.id];
     if (!saveCardEditOrRestore(previousEdits)) return;
     if (state[family.id]) delete state[family.id][variant.id];
     saveProgress();
@@ -721,6 +724,32 @@
     return true;
   }
 
+  function normalizeRarityPercentage(value) {
+    const raw = String(value || '').trim().replace(/%$/,'').trim();
+    if (!raw) return '';
+    if (!/^\d{1,3}(?:\.\d{1,6})?$/.test(raw)) return null;
+    const number = Number(raw);
+    if (!Number.isFinite(number) || number < 0 || number > 100) return null;
+    const [whole,fraction = ''] = raw.split('.');
+    const normalizedFraction = fraction.replace(/0+$/,'');
+    return `${Number(whole)}${normalizedFraction ? `.${normalizedFraction}` : ''}%`;
+  }
+
+  function saveRarityPercentage(family,variant,value) {
+    const percentage = normalizeRarityPercentage(value);
+    if (percentage === null) {
+      showToast('Enter a percentage from 0 to 100, such as 0.07.');
+      return false;
+    }
+    const previousEdits = cloneJson(spriteCardEdits);
+    familyCardEdits(family.id).percentages[variant.id] = percentage;
+    if (!saveCardEditOrRestore(previousEdits)) return false;
+    renderCollections();
+    updateCounters();
+    showToast(percentage ? `${variantView(family,variant).name}: ${percentage}` : 'Rarity percentage removed');
+    return true;
+  }
+
   function spriteCardEditsFingerprint() {
     return JSON.stringify({
       families:spriteCardEdits.families || {},
@@ -735,6 +764,7 @@
       || (Array.isArray(edits.deleted) && edits.deleted.length)
       || (Array.isArray(edits.order) && edits.order.length)
       || (edits.images && typeof edits.images === 'object' && Object.keys(edits.images).length)
+      || (edits.percentages && typeof edits.percentages === 'object' && Object.keys(edits.percentages).length)
     ));
     const hasNewGroups = Array.isArray(spriteCardEdits.customFamilies) && spriteCardEdits.customFamilies.length > 0;
     const hasChanges = hasFamilyChanges || hasNewGroups;
@@ -890,6 +920,13 @@
         family.variants[variantId] ||= {};
         family.variants[variantId].image = asset.path;
         family.variants[variantId].deleted = false;
+      });
+
+      Object.entries(edits.percentages && typeof edits.percentages === 'object' ? edits.percentages : {}).forEach(([variantId,percentage]) => {
+        if (Array.isArray(edits.deleted) && edits.deleted.includes(variantId)) return;
+        family.variants[variantId] ||= {};
+        if (percentage) family.variants[variantId].rarityPercentage = String(percentage);
+        else delete family.variants[variantId].rarityPercentage;
       });
     });
     nextDesign._meta = { ...(nextDesign._meta || {}), publishedAt:Date.now() };
@@ -1282,17 +1319,45 @@
     deleteButton.setAttribute('aria-label',`Delete ${view.name || 'sprite'} card`);
     editorTools.append(moveLeft,moveHandle,moveRight,deleteButton);
 
+    const percentageEditor = document.createElement('label');
+    percentageEditor.className = 'sprite-percentage-editor';
+    const percentageEditorLabel = document.createElement('span');
+    percentageEditorLabel.textContent = 'Rarity %';
+    const percentageInput = document.createElement('input');
+    percentageInput.type = 'text';
+    percentageInput.inputMode = 'decimal';
+    percentageInput.maxLength = 10;
+    percentageInput.placeholder = '0.07';
+    percentageInput.value = String(view.rarityPercentage || '').replace(/%$/,'');
+    percentageInput.setAttribute('aria-label',`Rarity percentage for ${view.name || 'sprite'} ${familyInfo.name || ''}`.trim());
+    percentageEditor.append(percentageEditorLabel,percentageInput);
+
+    const variantLine = document.createElement('div');
+    variantLine.className = 'sprite-variant-line';
+    const rarityPercentage = document.createElement('span');
+    rarityPercentage.className = 'sprite-rarity-percentage';
+    rarityPercentage.textContent = view.rarityPercentage || '';
+    rarityPercentage.hidden = !view.rarityPercentage;
     const title = document.createElement('h4');
     title.textContent = view.name || '';
     title.hidden = !view.name;
+    variantLine.append(rarityPercentage,title);
 
     const listLabel = document.createElement('div');
     listLabel.className = 'sprite-list-label';
     const listGroupName = document.createElement('strong');
     listGroupName.textContent = familyInfo.name || family.name || 'Sprite';
+    const listVariantLine = document.createElement('div');
+    listVariantLine.className = 'sprite-list-variant-line';
+    const listRarityPercentage = document.createElement('span');
+    listRarityPercentage.className = 'sprite-list-rarity-percentage';
+    listRarityPercentage.textContent = view.rarityPercentage || '';
+    listRarityPercentage.hidden = !view.rarityPercentage;
     const listVariantName = document.createElement('span');
+    listVariantName.className = 'sprite-list-variant-name';
     listVariantName.textContent = view.name || 'Unnamed';
-    listLabel.append(listGroupName,listVariantName);
+    listVariantLine.append(listRarityPercentage,listVariantName);
+    listLabel.append(listGroupName,listVariantLine);
 
     const collect = document.createElement('button');
     collect.type = 'button';
@@ -1306,7 +1371,7 @@
 
     const masterLabel = document.createElement('div');
     masterLabel.className = 'master-label';
-    card.append(crown,imageWrap,editorTools,title,listLabel,collect,masterLabel);
+    card.append(crown,imageWrap,editorTools,percentageEditor,variantLine,listLabel,collect,masterLabel);
 
     const toggleCollected = () => {
       current.collected = !current.collected;
@@ -1326,6 +1391,18 @@
     moveLeft.addEventListener('click',() => moveSpriteCard(family,variant.id,-1));
     moveRight.addEventListener('click',() => moveSpriteCard(family,variant.id,1));
     deleteButton.addEventListener('click',() => deleteSpriteCard(family,variant));
+    percentageInput.addEventListener('change',() => {
+      if (!saveRarityPercentage(family,variant,percentageInput.value)) {
+        percentageInput.value = String(view.rarityPercentage || '').replace(/%$/,'');
+        percentageInput.focus();
+      }
+    });
+    percentageInput.addEventListener('keydown',(event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        percentageInput.blur();
+      }
+    });
 
     const acceptImage = async (file) => {
       imageWrap.classList.add('drop-saving');
@@ -1851,6 +1928,6 @@
   const activeHash = `#${activeRarity.toLowerCase()}`;
   if (location.hash !== activeHash) history.replaceState({ rarity:activeRarity },'',activeHash);
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./service-worker.js?v=65',{ updateViaCache:'none' }).then((registration) => registration.update()).catch(() => {});
+    navigator.serviceWorker.register('./service-worker.js?v=66',{ updateViaCache:'none' }).then((registration) => registration.update()).catch(() => {});
   }
 })();
