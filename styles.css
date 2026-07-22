@@ -208,7 +208,7 @@ body.collection-open .collection:not(.has-custom-background) .collection-count,b
 .collect-button { width:100%; min-height:44px; display:flex; align-items:center; justify-content:center; gap:7px; color:var(--theme-button-text); border:1px solid rgba(90,63,125,.28); border-radius:13px; background:var(--theme-button-bg); font-size:var(--theme-checklist-button-size); font-weight:900; cursor:pointer; touch-action:pan-x pan-y pinch-zoom; }
 .box { width:20px; height:20px; flex:none; display:grid; place-items:center; border:2px solid var(--theme-accent); border-radius:6px; }
 .card.collected .box { background:var(--theme-accent); }
-.card.collected .box::after { content:"âœ“"; color:#10142b; font-size:14px; font-weight:1000; }
+.card.collected .box::after { content:"✓"; color:#10142b; font-size:14px; font-weight:1000; }
 .master-label { min-height:14px; margin-top:7px; color:#705c81; text-align:center; font-size:10px; }
 .card.mastered .master-label { color:#8d5d00; font-weight:900; }
 .card.search-target { outline:4px solid var(--theme-accent); outline-offset:3px; animation:search-target-pulse .75s ease-in-out 3 alternate; }
@@ -268,7 +268,7 @@ noscript { display:block; padding:12px; text-align:center; background:#7e2f42; }
   .card.search-target { animation:none; }
 }
 
-/* Minimal frosted-card and floating-title design â€” July 2026 */
+/* Minimal frosted-card and floating-title design — July 2026 */
 :root {
   --font-body: "UserCustomFont", "Trebuchet MS", sans-serif !important;
   --font-heading: "UserCustomFont", "Trebuchet MS", sans-serif !important;
