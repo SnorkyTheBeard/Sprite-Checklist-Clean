@@ -1122,3 +1122,7 @@ body.sprite-list-view .page-swipe-hint {
   grid-row: 2;
   justify-self: start;
 }
+.page-count {
+  min-width: max-content;
+  white-space: nowrap;
+}
